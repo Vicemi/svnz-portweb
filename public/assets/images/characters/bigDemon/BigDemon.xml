@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!DOCTYPE sequence SYSTEM "sidewalkdtd">
+<sequence name="C:\Projects\BigFish\SuperVampireNinjaZero\superVampireNinjaZero\FighterFactoryProyects\BigDemon\sidewalk\BigDemon.xml" source=".\*.png">
+  <img regx="39.000000" regy="49.000000" name="BigDemon" savedname="BigDemon.png" w="0.000000" h="0.000000"/>
+  <framelist>  
+  <frame regx="39" regy="49" name="BigDemon#0_000.png" w="79" h="98" x="253" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#0_001.png" w="79" h="97" x="333" y="98"/>
+    <frame regx="39" regy="49" name="BigDemon#0_002.png" w="79" h="96" x="425" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#0_003.png" w="78" h="95" x="425" y="97"/>
+    <frame regx="39" regy="49" name="BigDemon#1000_000.png" w="79" h="98" x="173" y="99"/>
+    <frame regx="39" regy="49" name="BigDemon#1000_001.png" w="79" h="98" x="173" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#1000_002.png" w="78" h="98" x="253" y="99"/>
+    <frame regx="39" regy="49" name="BigDemon#1000_003.png" w="91" h="97" x="333" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#1000_004.png" w="91" h="99" x="80" y="100"/>
+    <frame regx="39" regy="49" name="BigDemon#1000_005.png" w="92" h="99" x="80" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#10_000.png" w="79" h="99" x="0" y="101"/>
+    <frame regx="39" regy="49" name="BigDemon#10_001.png" w="79" h="100" x="0" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#20_000.png" w="106" h="54" x="855" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#20_001.png" w="106" h="74" x="653" y="75"/>
+    <frame regx="39" regy="49" name="BigDemon#20_002.png" w="106" h="74" x="653" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#5000_000.png" w="79" h="89" x="505" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#5000_001.png" w="94" h="61" x="760" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#5000_002.png" w="87" h="69" x="653" y="150"/>
+    <frame regx="39" regy="49" name="BigDemon#5000_003.png" w="87" h="48" x="80" y="200"/>
+    <frame regx="39" regy="49" name="BigDemon#5000_004.png" w="87" h="41" x="333" y="196"/>
+    <frame regx="39" regy="49" name="BigDemon#5000_005.png" w="67" h="87" x="505" y="90"/>
+    <frame regx="39" regy="49" name="BigDemon#5000_006.png" w="67" h="86" x="585" y="0"/>
+    <frame regx="39" regy="49" name="BigDemon#5000_007.png" w="66" h="85" x="585" y="87"/>
+  </framelist>
+</sequence>

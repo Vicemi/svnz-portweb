@@ -1,0 +1,263 @@
+<Characters>
+
+	<Mina numberOfPalettes = "5" >
+		<defaultValues
+			alias                 = "Mina"
+			dataKey               = "Mina"
+			color                 = "4"
+			statesDictionary      = "Mina_FighterStates"
+			state                 = "Stand"
+			controlTriggersHuman  = "Mina_Control"
+			controlTriggersCPU    = "Mina_Control"
+			decisionsAI           = "Standar_Decisions_AI"
+			reflexesAI            = "Standar_Reflexes_AI"
+			reflexesFrequency     = "DEFAULT"
+			friction              = "DEFAULT"
+			gravity               = "DEFAULT"
+			collisionWidth        = "32"
+			strength              = "1"
+			armorMode             = "false"
+			lifeHuman             = "400" 
+			lifeCPU               = "100"
+			closeAttackDist       = "25"
+			midAttackDist         = "80"
+			longAttackDist        = "120"
+			blendMode             = "DEFAULT"
+			tintMode              = "DEFAULT"
+			tintColor             = ""
+			walkSpeed			  = "120"
+		/>
+		<name1 alias = "Lucy" color = "1" />
+		<name2 alias = "Evil Lucy" color = "2" />
+		<name3 alias = "Satu" color = "3" />
+		<name4 alias = "Proquia" color = "1" />
+		<name5 alias = "Ursula" color = "0" />
+		<name6 alias = "Giselle" color = "3" />
+		<name7 alias = "Vampire Killer" color = "3" />
+		<name8 alias = "Cecilia" color = "1" />
+	</Mina>
+	
+	<DemonNinja numberOfPalettes = "3">
+		<defaultValues
+			alias                 = "DemonNinja"
+			dataKey               = "DemonNinja"
+			color                 = "-1"
+			statesDictionary      = "DemonNinja_FighterStates"
+			state                 = "Stand"
+			controlTriggersHuman  = "DemonNinja_Control"
+			controlTriggersCPU    = "DemonNinja_Control"
+			decisionsAI           = "Standar_Decisions_AI"
+			reflexesAI            = "Standar_Reflexes_AI"
+			reflexesFrequency     = "30"
+			friction              = "DEFAULT"
+			gravity               = "DEFAULT"
+			collisionWidth        = "32"
+			strength              = "1"
+			armorMode             = "false"
+			lifeHuman             = "100" 
+			lifeCPU               = "100"
+			closeAttackDist       = "30"
+			midAttackDist         = "60"
+			longAttackDist        = "90"
+			blendMode             = "DEFAULT"
+			tintMode              = "DEFAULT"
+			tintColor             = ""
+			walkSpeed			  = "80"
+			randomValue           = "0"
+		/>
+		<name1 alias = "Kato" color = "-1" />
+		<name2 alias = "Albert" color = "-1" />
+		<name3 alias = "ElSeba" color = "2"  />
+		<name4 alias = "Jhor Hitto" color = "1" />
+		<name5 alias = "Kalato" color = "-1" lifeCPU="80" />
+		<name6 alias = "Igor" color = "1" walkSpeed = "40" />
+		<genericName alias = "Pain Generator" />
+		<genericName alias = "Bully" />
+		<genericName alias = "Solitaire" />
+		<genericName alias = "Confused Guy" />
+		<genericName alias = "Mercenary" />
+		<genericName alias = "MarcoX" />
+		<genericName alias = "Dark Servant" color = "2" />
+		<genericName alias = "Ubuntu Buntu" />
+		<genericName alias = "Spider" />
+	</DemonNinja>
+	
+	<GoldDemonNinja numberOfPalettes = "4">
+		<defaultValues
+			alias                 = "GoldDemon"
+			dataKey               = "DemonNinja"
+			color                 = "3"
+			statesDictionary      = "DemonNinja_FighterStates"
+			state                 = "Stand"
+			controlTriggersHuman  = "DemonNinja_Control"
+			controlTriggersCPU    = "DemonNinja_Control"
+			decisionsAI           = "Standar_Decisions_AI"
+			reflexesAI            = "Standar_Reflexes_AI"
+			reflexesFrequency     = "60"
+			friction              = "DEFAULT"
+			gravity               = "DEFAULT"
+			collisionWidth        = "32"
+			strength              = "1"
+			armorMode             = "true"
+			lifeHuman             = "100" 
+			lifeCPU               = "100"
+			closeAttackDist       = "30"
+			midAttackDist         = "60"
+			longAttackDist        = "90"
+			blendMode             = "DEFAULT"
+			tintMode              = "DEFAULT"
+			tintColor             = ""
+			walkSpeed			  = "80"
+			randomValue           = "0"
+		/>
+	</GoldDemonNinja>
+	
+	<GenericNinja numberOfPalettes = "4">
+		<defaultValues
+			alias                 = "GenericNinja"
+			dataKey               = "GenericNinja"
+			color                 = "-1"
+			statesDictionary      = "GenericNinja_FighterStates"
+			state                 = "Stand"
+			controlTriggersHuman  = "DemonNinja_Control"
+			controlTriggersCPU    = "DemonNinja_Control"
+			decisionsAI           = "Standar_Decisions_AI"
+			reflexesAI            = "Standar_Reflexes_AI"
+			reflexesFrequency     = "30"
+			friction              = "DEFAULT"
+			gravity               = "DEFAULT"
+			collisionWidth        = "32"
+			strength              = "1"
+			armorMode             = "false"
+			lifeHuman             = "100" 
+			lifeCPU               = "80"
+			closeAttackDist       = "30"
+			midAttackDist         = "60"
+			longAttackDist        = "90"
+			blendMode             = "DEFAULT"
+			tintMode              = "DEFAULT"
+			tintColor             = ""
+			walkSpeed			  = "100"
+		/>
+		<name1 alias = "Kyo Shin" color = "-1" />
+		<name2 alias = "Fla Ko" color = "-1" />
+		<name3 alias = "Rafe" color = "-1" />
+		<name4 alias = "Grey" color = "2"/>
+		<name5 alias = "Akira Torikoyama" color = "0" />
+		<name6 alias = "Shadow Killer" color = "1" walkSpeed = "240" />
+		<name7 alias = "Klarkinston" color = "-1" />
+		<name8 alias = "Madrok" color ="1" walkSpeed = "240" tintColor = "255,255,0" reflexesFrequency = "15"/>
+		<genericName alias = "Horigoshi" />
+		<genericName alias = "Takeo" />
+		<genericName alias = "Natural Error" />
+		<genericName alias = "Slowy" walkSpeed	= "30" />
+		<genericName alias = "Geronimo" />
+		<genericName alias = "Mandrake" />
+		<genericName alias = "Ninja" />
+		<genericName alias = "Bad Dude" />
+		<genericName alias = "Phantom Ninja" blendMode = "ADD" tintColor  = "128,128,128"/>
+		<genericName alias = "Schumacher" />
+		<genericName alias = "Taco Fisher" />
+	</GenericNinja>
+	
+	<Bat numberOfPalettes = "5">
+		<defaultValues
+			alias                 = "Bat"
+			dataKey               = "Bat"
+			color                 = "0"
+			statesDictionary      = "Bat_FighterStates"
+			state                 = "Fly"
+			controlTriggersHuman  = "Bat_Control"
+			controlTriggersCPU    = "Bat_Control"
+			decisionsAI           = "Standar_Decisions_AI"
+			reflexesAI            = "Standar_Reflexes_AI"
+			reflexesFrequency     = "5"
+			friction              = "DEFAULT"
+			gravity               = "DEFAULT"
+			collisionWidth        = "32"
+			strength              = "1"
+			armorMode             = "false"
+			lifeHuman             = "100" 
+			lifeCPU               = "60"
+			closeAttackDist       = "30"
+			midAttackDist         = "45"
+			longAttackDist        = "90"
+			blendMode             = "DEFAULT"
+			tintMode              = "DEFAULT"
+			tintColor             = ""
+			walkSpeed			  = "DEFAULT"
+		/>
+		<name1 alias = "Pardo" color = "4" />
+		<name2 alias = "Batovi"	color = "-1" />
+		<name3 alias = "Batata"	color = "-1" />
+		<genericName alias = "Animalito" />
+	</Bat>
+	
+	<BigDemon numberOfPalettes = "3">
+		<defaultValues
+			alias                 = "BigDemon"
+			dataKey               = "BigDemon"
+			color                 = "0"
+			statesDictionary      = "BigDemon_FighterStates"
+			state                 = "Stand"
+			controlTriggersHuman  = "BigDemon_Control"
+			controlTriggersCPU    = "BigDemon_Control"
+			decisionsAI           = "BigDemon_Decisions_AI"
+			reflexesAI            = "BigDemon_Reflexes_AI"
+			reflexesFrequency     = "30"
+			friction              = "DEFAULT"
+			gravity               = "DEFAULT"
+			collisionWidth        = "48"
+			strength              = "1"
+			armorMode             = "true"
+			lifeHuman             = "100"
+			lifeCPU               = "150"
+			closeAttackDist       = "52"
+			midAttackDist         = "75"
+			longAttackDist        = "120"
+			blendMode             = "DEFAULT"
+			tintMode              = "DEFAULT"
+			tintColor             = ""
+			walkSpeed			  = "30"
+		/>
+		<name1 alias = "Bellmons" color = "1"/>
+		<name2 alias = "BigOne" color = "2"/>
+		<name3 alias = "BigTwo" color = "1"/>
+		<name4 alias = "Nowane" color = "-1"/>
+		<name5 alias = "ElJefe" color = "2"/>
+		<name6 alias = "Butaca" color = "2"/>
+	</BigDemon>
+	
+	<Dracula numberOfPalettes = "3">
+		<defaultValues
+			alias                 = "Dracula"
+			dataKey               = "Dracula"
+			color                 = "0"
+			statesDictionary      = "Dracula_FighterStates"
+			state                 = "Stand"
+			controlTriggersHuman  = "Dracula_Control"
+			controlTriggersCPU    = "Dracula_Control"
+			decisionsAI           = "Dracula_Decisions_AI"
+			reflexesAI            = "Dracula_Reflexes_AI"
+			reflexesFrequency     = "8"
+			friction              = "DEFAULT"
+			gravity               = "DEFAULT"
+			collisionWidth        = "32"
+			strength              = "1"
+			armorMode             = "false"
+			lifeHuman             = "100" 
+			lifeCPU               = "250"
+			closeAttackDist       = "15"
+			midAttackDist         = "240"
+			longAttackDist        = "320"
+			blendMode             = "DEFAULT"
+			tintMode              = "DEFAULT"
+			tintColor             = ""
+			walkSpeed			  = "200"
+		/>
+		<name1 alias = "Alucard" color = "1" />
+		<name2 alias = "Varg" color = "1" />
+		<name3 alias = "Hiryu" color = "2" />
+	</Dracula>
+
+</Characters>

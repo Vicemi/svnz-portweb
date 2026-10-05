@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!DOCTYPE sequence SYSTEM "sidewalkdtd">
+<sequence name="C:\projects\superVampireNinjaZero\superVampireNinjaZero\FighterFactoryProyects\GenericNinja\SideWalk\GenericNinja.xml" source=".\*.png">
+  <img regx="19.000000" regy="21.000000" name="GenericNinja" savedname="GenericNinja.png" w="0.000000" h="0.000000"/>
+  <framelist>  
+  <frame regx="19" regy="21" name="genericNinja#0_000.png" w="38" h="43" x="232" y="44"/>
+    <frame regx="19" regy="21" name="genericNinja#0_001.png" w="39" h="42" x="272" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#0_002.png" w="38" h="42" x="272" y="43"/>
+    <frame regx="19" regy="21" name="genericNinja#1000_000.png" w="39" h="43" x="232" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#1000_001.png" w="51" h="40" x="344" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#1000_002.png" w="48" h="40" x="344" y="41"/>
+    <frame regx="19" regy="21" name="genericNinja#1000_003.png" w="39" h="40" x="232" y="88"/>
+    <frame regx="19" regy="21" name="genericNinja#1000_004.png" w="36" h="43" x="195" y="46"/>
+    <frame regx="19" regy="21" name="genericNinja#10_000.png" w="38" h="46" x="33" y="47"/>
+    <frame regx="19" regy="21" name="genericNinja#10_001.png" w="38" h="45" x="156" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#20_000.png" w="32" h="50" x="0" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#5000_000.png" w="43" h="45" x="72" y="46"/>
+    <frame regx="19" regy="21" name="genericNinja#5000_001.png" w="39" h="45" x="116" y="46"/>
+    <frame regx="19" regy="21" name="genericNinja#5000_002.png" w="36" h="45" x="195" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#5020_000.png" w="43" h="45" x="72" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#5020_001.png" w="39" h="45" x="116" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#5020_002.png" w="36" h="45" x="156" y="46"/>
+    <frame regx="19" regy="21" name="genericNinja#5040_000.png" w="34" h="40" x="344" y="82"/>
+    <frame regx="19" regy="21" name="genericNinja#5040_001.png" w="31" h="42" x="272" y="86"/>
+    <frame regx="19" regy="21" name="genericNinja#5040_002.png" w="31" h="42" x="0" y="51"/>
+    <frame regx="19" regy="21" name="genericNinja#5060_000.png" w="34" h="39" x="396" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#5060_001.png" w="31" h="41" x="312" y="42"/>
+    <frame regx="19" regy="21" name="genericNinja#5060_002.png" w="31" h="41" x="312" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#5100_000.png" w="38" h="46" x="33" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#5100_001.png" w="48" h="32" x="396" y="40"/>
+    <frame regx="19" regy="21" name="genericNinja#5100_002.png" w="62" h="24" x="445" y="66"/>
+    <frame regx="19" regy="21" name="genericNinja#5100_003.png" w="56" h="25" x="445" y="40"/>
+    <frame regx="19" regy="21" name="genericNinja#5100_004.png" w="33" h="37" x="431" y="0"/>
+    <frame regx="19" regy="21" name="genericNinja#5100_005.png" w="33" h="38" x="195" y="90"/>
+  </framelist>
+</sequence>

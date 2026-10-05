@@ -1,0 +1,339 @@
+<levelData>
+
+
+
+
+	<texts>
+		<english>
+
+		</english>
+		<spanish>
+
+		</spanish>
+	</texts>
+
+	
+	
+	
+	
+	
+	<levels>
+	
+		<normalLevel name = "Story Mode" bg = "dojo" music = "bgmNormal" playerTeam = "singleTeamMina" >
+			<wave1 name = "storyWave1" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "GOOD!" failTextKey = "YOU ARE DEAD..." />
+			<wave2 name = "storyWave2" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "GREAT!" failTextKey = "YOU ARE DEAD..." />
+			<wave3 name = "storyFirstBoss" initialTextKey = "A Dangerous Enemy Is Coming!" startTextKey = "FIGHT!" finalTextKey = "GREAT!" failTextKey = "YOU ARE DEAD..." />
+			<wave4 name = "storySecondBoss" music = "bgmBoss" initialTextKey = "The Next Guy Won't Be That Easy!" startTextKey = "SURVIVE!" finalTextKey = "INCREDIBLE!" failTextKey = "YOU ARE DEAD..." />
+			<wave5 name = "storyWave3" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "GREAT!" failTextKey = "YOU ARE DEAD..." />
+			<wave6 name = "storyThirdBoss" initialTextKey = "Your Dear Sister Has Been Posessed!" startTextKey = "FIGHT!" finalTextKey = "GREAT!" failTextKey = "YOU ARE DEAD..." />
+			<wave7 name = "storyFinalBoss" initialTextKey = "Dracula Is Coming!!" startTextKey = "REVENGE YOUR SISTER!" finalTextKey = "AWESOME!!" failTextKey = "YOU ARE DEAD..." />
+		</normalLevel>
+		
+		<timeAttackLevel name = "Time Attack" bg = "arena" music = "bgmNormal" playerTeam = "singleTeamMina" >
+			<wave1 name = "demoTimedWave" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "YOU'VE MADE IT!" failTextKey = "YOU ARE DEAD..." />
+		</timeAttackLevel>
+		
+		<survivalLevel name = "Cooperative Survival" bg = "dungeon" music = "bgmBoss" playerTeam = "doubleTeamMina">
+			<wave1 name = "demoSurvivalWave" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "GOOD!" failTextKey = "FAILED" />
+		</survivalLevel>
+		
+		<practiceLevel name = "Practice" bg = "practice" music = "NONE" playerTeam = "singleTeamMina" >
+			<wave1 name = "demoPracticeWave" initialTextKey = "Are You Ready?" startTextKey = "PRACTICE!" finalTextKey = "GOOD!" failTextKey = "YOU ARE DEAD..." />
+		</practiceLevel>
+		
+		<genericNinjaLevel name = "Survival" bg = "dojo" music = "bgmNormal" playerTeam = "singleTeamGenericNinja">
+			<wave1 name = "enemyTestSurvivalEasy" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "GOOD!" failTextKey = "YOU ARE DEAD..." />
+		</genericNinjaLevel>
+		
+		<demonNinjaLevel name = "Survival" bg = "dojo" music = "bgmNormal" playerTeam = "singleTeamDemonNinja">
+			<wave1 name = "enemyTestSurvivalEasy" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "GOOD!" failTextKey = "YOU ARE DEAD..." />
+		</demonNinjaLevel>
+		
+		<batLevel name = "Survival" bg = "dojo" music = "bgmNormal" playerTeam = "singleTeamBat">
+			<wave1 name = "enemyTestSurvival" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "GOOD!" failTextKey = "YOU ARE DEAD..." />
+		</batLevel>
+		
+		<bigDemonLevel name = "Survival" bg = "arena" music = "bgmBoss" playerTeam = "singleTeamBigDemon">
+			<wave1 name = "enemyTestSurvival" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "GOOD!" failTextKey = "YOU ARE DEAD..." />
+		</bigDemonLevel>
+		
+		<draculaLevel name = "Survival" bg = "arena" music = "bgmBoss" playerTeam = "singleTeamDracula">
+			<wave1 name = "enemyTestSurvivalHard" initialTextKey = "Are You Ready?" startTextKey = "FIGHT!" finalTextKey = "GOOD!" failTextKey = "YOU ARE DEAD..." />
+		</draculaLevel>
+		
+	
+	</levels>	
+	
+	
+	<waveList>
+		<storyWave1 mode = "StandarMode" list = "easyList1" activeEnemies = "1" loopIndex = "0" />
+		<storyWave2 mode = "StandarMode" list = "easyList2" activeEnemies = "2" loopIndex = "0" />
+		<storyWave3 mode = "StandarMode" list = "easyList3" activeEnemies = "5" loopIndex = "0" />
+		<storyFirstBoss mode = "BossMode" list = "goldDemonNinjaBoss" activeEnemies = "1" listExtras = "easyList2" activeExtras = "2" loopIndex = "0" />
+		<storySecondBoss mode = "BossMode" list = "bigDemonBoss" activeEnemies = "1" listExtras = "easyList2" activeExtras = "3" loopIndex = "0" />
+		<storyThirdBoss mode = "BossMode" list = "minaBoss" activeEnemies = "1" listExtras = "easyList2" activeExtras = "0" loopIndex = "0" />
+		<storyFinalBoss mode = "BossMode" list = "draculaBoss" activeEnemies = "1" listExtras = "easyList1" activeExtras = "1" loopIndex = "0" />
+	
+		<demoStandar 		mode = "StandarMode" 	list = "listGenericC" 	activeEnemies = "1"		loopIndex = "0"	/>
+		<demoTimedWave 		mode = "TimeMode" 		list = "listGenericC" 	activeEnemies = "3"		loopIndex = "0" 	time="300" />
+		<demoSurvivalWave	mode = "SurvivalMode" 	list = "listGenericC" 	activeEnemies = "5"		loopIndex = "0"  />
+		<demoPracticeWave 	mode = "SurvivalMode"	list = "practiceList"	activeEnemies = "1"	loopIndex = "0" />
+		
+		<enemyTestSurvivalEasy mode = "SurvivalMode" list = "listAllGeneric" activeEnemies = "1" loopIndex = "0" />
+		<enemyTestSurvival mode = "SurvivalMode" list = "listAllGeneric" activeEnemies = "3" loopIndex = "0" />
+		<enemyTestSurvivalHard mode = "SurvivalMode" list = "listAllGeneric" activeEnemies = "6" loopIndex = "0" />
+	</waveList>
+
+	
+	
+	
+	
+	<fighterLists>
+	
+	
+		<singleTeamMina team = "1">
+			<char type = "Mina" nameIndex = "0"  />
+		</singleTeamMina>
+		
+		<doubleTeamMina team = "1">
+			<char type = "Mina" nameIndex = "0" lifeCPU = "200" />
+			<char type = "Mina" nameIndex = "1" lifeCPU = "200" />
+		</doubleTeamMina>
+		
+		<singleTeamGenericNinja team = "1">
+			<enemy type = "GenericNinja" nameIndex = "0" lifeHuman = "300" />
+		</singleTeamGenericNinja>
+		
+		<singleTeamDemonNinja team = "1">
+			<enemy type = "DemonNinja" nameIndex = "3" lifeHuman = "300" />
+		</singleTeamDemonNinja>
+		
+		<singleTeamBat team = "1">
+			<enemy type = "Bat" nameIndex = "1" state = "Fly" yPos = "30"/>
+		</singleTeamBat>
+		
+		<singleTeamBigDemon team = "1">
+			<enemy type = "BigDemon" nameIndex = "6" lifeHuman = "300" />
+		</singleTeamBigDemon>
+		
+		<singleTeamDracula team = "1">
+			<enemy type = "Dracula" nameIndex = "0" lifeHuman = "300" />
+		</singleTeamDracula>
+		
+		<easyList1 team = "2">
+			<enemy type = "DemonNinja" nameIndex = "0" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "0" state = "Intro1" yPos = "400" />
+		</easyList1>
+		
+		<easyList2 team = "2">
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Bat" nameIndex = "-1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+		</easyList2>
+		
+		<easyList3 team = "2">
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "DamageFall" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Bat" nameIndex = "-1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "DamageFall" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Bat" nameIndex = "-1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Bat" nameIndex = "-1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+		</easyList3>
+		
+		<goldDemonNinjaBoss team = "2">
+			<enemy type = "GoldDemonNinja" nameIndex = "-1" state = "Intro1" yPos = "270" />
+		</goldDemonNinjaBoss>
+		
+		<bigDemonBoss team = "2">
+			<enemy type = "BigDemon" nameIndex = "1" state = "Intro1" yPos = "400" />
+		</bigDemonBoss>
+		
+		<minaBoss team = "2">
+			<enemy type = "Mina" nameIndex = "2" state = "Jump" yPos = "400" lifeCPU="360" />
+		</minaBoss>
+		
+		<draculaBoss team = "2">
+			<enemy type = "Dracula" nameIndex = "0" state = "Appear" lifeCPU="480" />
+		</draculaBoss>
+		
+		<practiceList team = "2">
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "DamageFall" yPos = "400" reflexesAI = ""/>
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "DamageFall" yPos = "400" reflexesAI = "" />
+		</practiceList>
+		
+		<listDemonsA team = "2">
+			<enemy0 type = "DemonNinja"  	nameIndex = "4" />
+			<enemy1 type = "DemonNinja" 	nameIndex = "4" />
+		</listDemonsA>
+		
+		<listGenericA team = "2">
+			<enemy0 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy1 type = "DemonNinja" 	nameIndex = "4" />
+			<enemy1 type = "GenericNinja" 	nameIndex = "2" />
+		</listGenericA>
+		
+		<listGenericB team = "2">
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+<!--				<choose>
+					<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400"  cakeValue = "10"/>
+					<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" cakeValue = "20"/>
+					<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" cakeValue = "10"/>
+					<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" cakeValue = "1"/>
+				</choose> -->
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GoldDemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Mina" nameIndex = "2" state = "Jump" yPos = "400"/>
+			<enemy type = "BigDemon" nameIndex = "2" state = "Intro1" yPos = "400"/>
+			<enemy type = "Mina" nameIndex = "2" state = "Jump" yPos = "400"/>
+			
+			
+<!--			<enemy  type = "BigDemon"       nameIndex = "1" />
+			<enemy  type = "Dracula"		nameIndex = "1" state = "Appear" />
+			<enemy  type = "BigDemon"       nameIndex = "1" />
+			<enemy0 type = "Bat" 			nameIndex = "1" />
+			<enemy1 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy2 type = "DemonNinja" 	nameIndex = "4" />
+			<enemy3 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy4 type = "DemonNinja" 	nameIndex = "4" />
+			<enemy5 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy6 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy7 type = "DemonNinja" 	nameIndex = "4" />
+			<enemy8 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy9 type = "BigDemon" 		nameIndex = "1" />
+			<enemy10 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy11 type = "DemonNinja" 	nameIndex = "4" />
+			<enemy12 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy13 type = "Bat" 			nameIndex = "1" />
+			<enemy14 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy15 type = "DemonNinja" 	nameIndex = "4" />
+			<enemy16 type = "GenericNinja" 	nameIndex = "2" /> -->
+		</listGenericB>
+		
+		
+		<listGenericC team = "2">
+			<enemy type = "GenericNinja" nameIndex = "2" state = "DamageFall" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Bat" nameIndex = "-1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "DamageFall" yPos = "400" />
+			<enemy type = "BigDemon" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Bat" nameIndex = "-1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "DamageFall" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GoldDemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Bat" nameIndex = "-1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Mina" nameIndex = "2" state = "Jump" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Bat" nameIndex = "-1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Dracula" nameIndex = "-1" state = "Appear" yPos = "400" />
+		</listGenericC>
+		
+		<listAllGeneric team = "2">
+			<enemy type = "GenericNinja" nameIndex = "2" state = "DamageFall" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "DamageFall" yPos = "400" />
+			<enemy type = "BigDemon" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "DamageFall" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GoldDemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Mina" nameIndex = "-1" state = "Jump" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "DemonNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "GenericNinja" nameIndex = "-1" state = "Intro1" yPos = "400" />
+			<enemy type = "Dracula" nameIndex = "-1" state = "Appear" yPos = "400" />
+		</listAllGeneric>
+		
+		<listBatsx4 team = "2">
+			<enemy0 type = "Bat" 	nameIndex = "2" />
+			<enemy1 type = "Bat" 	nameIndex = "2" />
+			<enemy1 type = "Bat" 	nameIndex = "2" />
+			<enemy1 type = "Bat" 	nameIndex = "2" />
+		</listBatsx4>
+		
+		
+		<firstBoss team = "2">		
+			<enemy0 type = "BigDemon" nameIndex = "3" />
+		</firstBoss>
+		
+		<firstBossExtras team = "2">
+			<enemy0 type = "DemonNinja"  	nameIndex = "4" />
+			<enemy1 type = "GenericNinja" 	nameIndex = "2" />
+			<enemy2 type = "DemonNinja" 	nameIndex = "4" />
+			<enemy3 type = "GenericNinja" 	nameIndex = "2" />
+		</firstBossExtras>
+		
+	</fighterLists>
+
+	
+
+
+	
+</levelData>

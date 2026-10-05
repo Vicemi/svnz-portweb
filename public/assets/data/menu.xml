@@ -1,0 +1,40 @@
+<data>
+
+	<texts>
+		<english>
+			<pressStart text = "Press Start"/>
+			<storyMode  text = "Story Mode" />
+			<options    text = "Options"    />
+			<back 	    text = "Back"    	/>
+		</english>
+		<spanish>
+			<pressStart text = "Presiona Start"	/>
+			<storyMode  text = "Modo historia" 	/>
+			<options    text = "Opciones"       />
+			<back 	    text = "Atrás"    		/>
+		</spanish>
+	</texts>
+
+	<menuDefinition>
+
+		<firstMenu> 
+			<option0 textKey = "Normal Mode" 		  	action = "normalLevel" />
+			<option1 textKey = "Time Attack" 			action = "timeAttackLevel" />
+			<option2 textKey = "Coop Survival"   		action = "survivalLevel" />
+			<option3 textKey = "Practice"					action = "practiceLevel" />
+			<option4 textKey = "Enemy Test"			link = "extraModes" />
+			<option5 textKey = "Exit"   						action = "quitGame" />
+		</firstMenu>
+		
+		<extraModes cancel="Back">
+			<option0 textKey = "GenericNinja"	  		action = "genericNinjaLevel" />
+			<option0 textKey = "DemonNinja"	  		action = "demonNinjaLevel" />
+			<option0 textKey = "Bat"	  					action = "batLevel" />
+			<option0 textKey = "BigDemon" 		 	 	action = "bigDemonLevel" />
+			<option1 textKey = "Dracula" 		  			action = "draculaLevel" />
+			<option2 textKey = "Back"   					link = "firstMenu" />
+		</extraModes>
+		
+	</menuDefinition>
+
+</data>

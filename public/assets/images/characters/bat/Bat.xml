@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!DOCTYPE sequence SYSTEM "sidewalkdtd">
+<sequence name="C:\projects\superVampireNinjaZero\superVampireNinjaZero\FighterFactoryProyects\Bat\sidewalk\Bat.xml" source=".\*.png">
+  <img regx="28.000000" regy="12.000000" name="Bat" savedname="Bat.png" w="0.000000" h="0.000000"/>
+  <framelist>  
+  <frame regx="28" regy="12" name="bat#0_000.png" w="56" h="24" x="355" y="0"/>
+    <frame regx="28" regy="12" name="bat#0_001.png" w="62" h="22" x="412" y="0"/>
+    <frame regx="28" regy="12" name="bat#0_002.png" w="44" h="31" x="180" y="0"/>
+    <frame regx="28" regy="12" name="bat#5000_000.png" w="63" h="31" x="0" y="0"/>
+    <frame regx="28" regy="12" name="bat#5000_001.png" w="58" h="31" x="64" y="0"/>
+    <frame regx="28" regy="12" name="bat#5000_002.png" w="56" h="31" x="123" y="0"/>
+    <frame regx="28" regy="12" name="bat#5100_000.png" w="68" h="18" x="540" y="0"/>
+    <frame regx="28" regy="12" name="bat#5100_001.png" w="64" h="20" x="475" y="0"/>
+    <frame regx="28" regy="12" name="bat#5100_002.png" w="64" h="29" x="290" y="0"/>
+    <frame regx="28" regy="12" name="bat#5100_003.png" w="64" h="30" x="225" y="0"/>
+  </framelist>
+</sequence>

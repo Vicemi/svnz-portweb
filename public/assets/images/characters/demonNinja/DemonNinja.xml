@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!DOCTYPE sequence SYSTEM "sidewalkdtd">
+<sequence name="C:\projects\superVampireNinjaZero\superVampireNinjaZero\FighterFactoryProyects\DemonNinja\SideWalk\DemonNinja.xml" source=".\*.png">
+  <img regx="22.000000" regy="25.000000" name="DemonNinja" savedname="DemonNinja.png" w="0.000000" h="0.000000"/>
+  <framelist>  
+  <frame regx="22" regy="25" name="demonNinja#0_000.png" w="44" h="51" x="138" y="52"/>
+    <frame regx="22" regy="25" name="demonNinja#0_001.png" w="44" h="51" x="138" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#0_002.png" w="44" h="50" x="274" y="51"/>
+    <frame regx="22" regy="25" name="demonNinja#1000_000.png" w="43" h="51" x="183" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#1000_001.png" w="42" h="51" x="183" y="52"/>
+    <frame regx="22" regy="25" name="demonNinja#1000_002.png" w="50" h="49" x="319" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#1000_003.png" w="45" h="49" x="370" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#1000_004.png" w="36" h="49" x="370" y="50"/>
+    <frame regx="22" regy="25" name="demonNinja#1000_005.png" w="35" h="49" x="416" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#10_000.png" w="44" h="52" x="46" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#10_001.png" w="44" h="53" x="0" y="54"/>
+    <frame regx="22" regy="25" name="demonNinja#20_000.png" w="45" h="53" x="0" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#5000_000.png" w="46" h="51" x="91" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#5000_001.png" w="44" h="51" x="46" y="53"/>
+    <frame regx="22" regy="25" name="demonNinja#5000_002.png" w="45" h="51" x="91" y="52"/>
+    <frame regx="22" regy="25" name="demonNinja#5020_000.png" w="46" h="50" x="227" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#5020_001.png" w="44" h="50" x="274" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#5020_002.png" w="45" h="50" x="227" y="51"/>
+    <frame regx="22" regy="25" name="demonNinja#5040_000.png" w="42" h="45" x="452" y="46"/>
+    <frame regx="22" regy="25" name="demonNinja#5040_001.png" w="38" h="45" x="506" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#5040_002.png" w="37" h="45" x="506" y="46"/>
+    <frame regx="22" regy="25" name="demonNinja#5060_000.png" w="42" h="44" x="545" y="45"/>
+    <frame regx="22" regy="25" name="demonNinja#5060_001.png" w="38" h="44" x="588" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#5060_002.png" w="37" h="44" x="588" y="45"/>
+    <frame regx="22" regy="25" name="demonNinja#5100_000.png" w="48" h="49" x="319" y="50"/>
+    <frame regx="22" regy="25" name="demonNinja#5100_001.png" w="53" h="45" x="452" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#5100_002.png" w="64" h="26" x="685" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#5100_003.png" w="57" h="30" x="627" y="0"/>
+    <frame regx="22" regy="25" name="demonNinja#5100_004.png" w="42" h="44" x="545" y="0"/>
+  </framelist>
+</sequence>

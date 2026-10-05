@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<!DOCTYPE sequence SYSTEM "sidewalkdtd">
+<sequence name="C:\projects\superVampireNinjaZero\superVampireNinjaZero\FighterFactoryProyects\Dracula\sidewalk\Dracula.xml" source=".\*.png">
+  <img regx="25.000000" regy="29.000000" name="Dracula" savedname="Dracula.png" w="0.000000" h="0.000000"/>
+  <framelist>  
+  <frame regx="25" regy="29" name="Dracula#0_000.png" w="50" h="58" x="152" y="121"/>
+    <frame regx="25" regy="29" name="Dracula#0_001.png" w="53" h="57" x="311" y="58"/>
+    <frame regx="25" regy="29" name="Dracula#1000_000.png" w="51" h="56" x="258" y="118"/>
+    <frame regx="25" regy="29" name="Dracula#1000_001.png" w="65" h="56" x="365" y="114"/>
+    <frame regx="25" regy="29" name="Dracula#1000_002.png" w="59" h="56" x="434" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#1000_003.png" w="60" h="56" x="365" y="171"/>
+    <frame regx="25" regy="29" name="Dracula#10_000.png" w="50" h="60" x="152" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#10_001.png" w="50" h="61" x="98" y="124"/>
+    <frame regx="25" regy="29" name="Dracula#1500_000.png" w="64" h="52" x="494" y="54"/>
+    <frame regx="25" regy="29" name="Dracula#2000_000.png" w="56" h="61" x="41" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#2000_001.png" w="68" h="56" x="365" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#2000_002.png" w="66" h="56" x="365" y="57"/>
+    <frame regx="25" regy="29" name="Dracula#20_000.png" w="53" h="57" x="311" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#3000_000.png" w="37" h="62" x="0" y="128"/>
+    <frame regx="25" regy="29" name="Dracula#3000_001.png" w="37" h="61" x="0" y="191"/>
+    <frame regx="25" regy="29" name="Dracula#3000_002.png" w="43" h="61" x="98" y="186"/>
+    <frame regx="25" regy="29" name="Dracula#3000_003.png" w="53" h="61" x="98" y="62"/>
+    <frame regx="25" regy="29" name="Dracula#3000_004.png" w="53" h="61" x="41" y="62"/>
+    <frame regx="25" regy="29" name="Dracula#3000_005.png" w="53" h="61" x="41" y="124"/>
+    <frame regx="25" regy="29" name="Dracula#3000_006.png" w="53" h="61" x="41" y="186"/>
+    <frame regx="25" regy="29" name="Dracula#3000_007.png" w="53" h="61" x="98" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#3000_008.png" w="48" h="50" x="434" y="163"/>
+    <frame regx="25" regy="29" name="Dracula#3000_009.png" w="45" h="59" x="152" y="61"/>
+    <frame regx="25" regy="29" name="Dracula#3000_010.png" w="40" h="63" x="0" y="64"/>
+    <frame regx="25" regy="29" name="Dracula#3000_011.png" w="40" h="63" x="0" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#5000_000.png" w="67" h="53" x="494" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#5000_001.png" w="58" h="39" x="434" y="214"/>
+    <frame regx="25" regy="29" name="Dracula#5000_002.png" w="54" h="58" x="203" y="59"/>
+    <frame regx="25" regy="29" name="Dracula#5000_003.png" w="52" h="58" x="258" y="59"/>
+    <frame regx="25" regy="29" name="Dracula#5000_004.png" w="52" h="58" x="258" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#5000_005.png" w="43" h="52" x="434" y="110"/>
+    <frame regx="25" regy="29" name="Dracula#5000_006.png" w="45" h="52" x="434" y="57"/>
+    <frame regx="25" regy="29" name="Dracula#5000_007.png" w="45" h="53" x="258" y="175"/>
+    <frame regx="25" regy="29" name="Dracula#5000_008.png" w="43" h="48" x="494" y="107"/>
+    <frame regx="25" regy="29" name="Dracula#5000_009.png" w="77" h="25" x="562" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#5000_010.png" w="67" h="29" x="494" y="156"/>
+    <frame regx="25" regy="29" name="Dracula#5000_011.png" w="54" h="58" x="203" y="0"/>
+    <frame regx="25" regy="29" name="Dracula#5000_012.png" w="52" h="58" x="203" y="177"/>
+    <frame regx="25" regy="29" name="Dracula#5000_013.png" w="52" h="58" x="203" y="118"/>
+    <frame regx="25" regy="29" name="Dracula#5000_014.png" w="47" h="52" x="311" y="116"/>
+    <frame regx="25" regy="29" name="Dracula#5000_015.png" w="46" h="52" x="311" y="169"/>
+    <frame regx="25" regy="29" name="Dracula#5000_016.png" w="47" h="53" x="152" y="180"/>
+  </framelist>
+</sequence>
