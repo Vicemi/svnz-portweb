@@ -34,7 +34,8 @@ export interface FsmData {
 }
 
 export type Rect = [number, number, number, number];
-export interface Frame { img: string; ox: number; oy: number; t: number; flip: string; body: Rect[]; hit: Rect[] }
+/** `mz`: muzzle of the weapon in this picture (x forward, y up negative like the rects) - XA bonus characters. */
+export interface Frame { img: string; ox: number; oy: number; t: number; flip: string; body: Rect[]; hit: Rect[]; mz?: [number, number] }
 export interface Anim { loop: number; frames: Frame[] }
 export interface CharSprites {
   /** Render scale of the pictures (XA bonus characters; rects are already scaled in the data). */

@@ -110,7 +110,7 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
 }
 
 function drawFighter(g: CanvasRenderingContext2D, f: Fighter, debug: boolean): void {
-  if (f.blink && !f.blinkOn) return;
+  if ((f.blink && !f.blinkOn) || f.hidden) return;
   let [sx, sy] = screenOf(f.pos.x, f.pos.y, f.pos.z);
   if (f.shake.on) sx += (Math.random() * 2 - 1) * f.shake.amp;
   drawFrame(g, f.desc.dataKey, f.sheet, f.frame!, sx, sy, f.facing);

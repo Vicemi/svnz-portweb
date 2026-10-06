@@ -130,3 +130,15 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
   armadura, explosión BOSS_DEAD ~4 s y sacudida. Héroe XA: caminar, salto y doble salto (segundo salto solo desde `Jump`),
   bola de energía, reacción de daño/caída/levantarse reutilizando los estados Human con anims 5xxx del héroe.
 - Oleadas: jefe (música bgmBoss) y luego héroe (bgmNormal). Sonidos de XA en `assets/xa/fx`.
+
+## Ronda 8 — escudo del héroe XA, IA y cañones (2026-10-06)
+- Escudo (mecánica de XA, BLOCK_IN/OUT = frames 22..25): estados `XaHero_Block`/`Unblock` (botón 2). Con la guardia arriba
+  (`Fighter.guard`) los golpes débiles (fallType<=1) de frente se bloquean: sin daño, sonido s_1/s_2, efecto SHIELD (XaFx 20),
+  no suman combo ni chispa; cada bloqueo carga `guardHits` (se descarga 0.4/s) y el 4º rompe la guardia. Los golpes fuertes pasan.
+- Salida de balas: cada fotograma de pistola/cañón lleva `mz` (boca medida sobre los sheets, `research/muzzle.py`; héroe ≈(26,-17),
+  jefe ≈(36,-66)·0.62). `Fight.shoot/shootFan` usan `frame.mz` y espejan según el facing.
+- Muertes: héroe = pose de golpe, explosión HERO_DEATH + player_death + temblor, desaparece y muere (`XaHero_Dead`, acciones
+  `XaSpark`/`Hide`); jefe = BOSS_DEAD + explosiones encadenadas + temblor + cámara lenta.
+- IA: nuevas situaciones (TargetAttacking, TargetAirborne, TargetOffDepth, LowLife, TargetBehind) y reacciones (AlignDepth, JumpAway).
+  El héroe se cubre ante ataques/cercanía, salta lejos de los problemas, se alinea en profundidad para disparar y se retira con poca vida;
+  el jefe se alinea en z, dispara a quemarropa o contra objetivos en el aire.
