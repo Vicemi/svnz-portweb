@@ -104,3 +104,9 @@ Decodificada del exe (clases AIController/AIManager/AIPart/AIPartReactionBucket,
 - collisionWidth es el margen completo a las paredes (no la mitad).
 - Corrige el bug "encima del enemigo": ya nadie se queda clavado; el enemigo se separa (Stalk/Close) y se reacomoda.
 Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos especiales (estados FastMove/BodySlam ya enlazados por StateEquals).
+
+## Ronda 5 — logos, responsivo y publicación (2026-10-06)
+- Flujo de inicio: Batoví (3 s) -> vicemiScreen (3 s, mismo fundido) -> menú; cualquier tecla/toque salta cada logo.
+- Responsivo táctil: tamaños con clamp() según el alto de pantalla (botones, stick, márgenes con safe-area), botón de pantalla
+  completa (⛶, arriba a la izquierda; Fullscreen API + bloqueo a horizontal si existe) y F4 en teclado como el original.
+- README al estilo del de XA. Publicado en https://github.com/Vicemi/svnz-portweb (ramas develop y main).

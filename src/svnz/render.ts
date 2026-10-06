@@ -26,7 +26,7 @@ export async function preloadGraphics(): Promise<void> {
   [
     'assets/images/bg/dojo.png', 'assets/images/bg/arena.png', 'assets/images/bg/practice.png', 'assets/images/bg/trainingBg.png',
     'assets/images/hud/bars.png', 'assets/images/hud/barsEffect.png', 'assets/images/hud/fullBars.png', 'assets/images/hud/comboBars.png',
-    'assets/images/hud/menu/selector.png', 'assets/images/misc/batoviScreen.png', 'assets/images/misc/mainScreen.png',
+    'assets/images/hud/menu/selector.png', 'assets/images/misc/batoviScreen.png', 'assets/images/misc/vicemiScreen.png', 'assets/images/misc/mainScreen.png',
     'assets/images/misc/fightbanner.png', 'assets/images/misc/transitionFight.png', 'assets/images/misc/4x4.png',
     'assets/lang/images/help/help.png',
   ].forEach((p) => list.add(p));

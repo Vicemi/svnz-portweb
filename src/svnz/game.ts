@@ -6,7 +6,7 @@ import { loadData, DB } from './fight/data';
 import { Fight } from './fight/fight';
 import { H, W, drawBanner, drawFight, drawHud, drawText, preloadGraphics } from './render';
 
-type Screen = 'loading' | 'logo' | 'menu' | 'fight' | 'error';
+type Screen = 'loading' | 'logo' | 'vicemi' | 'menu' | 'fight' | 'error';
 const STEP = 1 / 60;
 
 export class SvnzGame {
@@ -123,7 +123,10 @@ export class SvnzGame {
   private update(dt: number): void {
     this.t += dt;
     switch (this.screen) {
-      case 'logo':
+      case 'logo':    // Batovi screen, then the port's own vicemi.dev screen (same timing), then the menu
+        if (this.t > 3 || (this.t > 0.5 && anyPressed())) this.goto('vicemi');
+        break;
+      case 'vicemi':
         if (this.t > 3 || (this.t > 0.5 && anyPressed())) this.goto('menu');
         break;
       case 'menu': this.menuUpdate(); break;
@@ -170,8 +173,8 @@ export class SvnzGame {
         g.font = '10px monospace';
         g.fillText('Error: ' + this.error, 10, 20);
         break;
-      case 'logo': {
-        const im = img('assets/images/misc/batoviScreen.png');
+      case 'logo': case 'vicemi': {
+        const im = img(this.screen === 'logo' ? 'assets/images/misc/batoviScreen.png' : 'assets/images/misc/vicemiScreen.png');
         if (im) {
           g.globalAlpha = Math.min(1, this.t / 0.5, Math.max(0, (3 - this.t) / 0.5));
           g.drawImage(im, 0, 0);
