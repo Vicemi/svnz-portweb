@@ -109,19 +109,19 @@ export class AIController {
       case 'StateEquals': return f.stateName === (p.params[0]?.[1] ?? '');
       case 'HasTarget': return !!t;
       case 'TargetDead': return !t || t.life < 1;
-      case 'CloseToTarget': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) <= close + t!.desc.collisionWidth;
-      case 'MidToTarget': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) <= mid + t!.desc.collisionWidth;
-      case 'LongToTarget': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) <= long + t!.desc.collisionWidth;
+      case 'CloseToTarget': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) <= close + t!.radius;
+      case 'MidToTarget': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) <= mid + t!.radius;
+      case 'LongToTarget': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) <= long + t!.radius;
       case 'CloseToAirTarget':
-        return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) <= close + t!.desc.collisionWidth && t!.pos.y > AIR_Y;
+        return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) <= close + t!.radius && t!.pos.y > AIR_Y;
       case 'AboveToTarget': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) < ABOVE_X;
       case 'TargetIsFallingClose': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) < ABOVE_X && t!.pos.y !== 0;
       // an enemy that has ME inside ITS attack range (closeAttackDist + my radius uses the enemy's numbers)
-      case 'IsCloseToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.closeAttackDist + e.desc.collisionWidth);
-      case 'MidToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.midAttackDist + e.desc.collisionWidth);
-      case 'LongToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.longAttackDist + e.desc.collisionWidth);
+      case 'IsCloseToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.closeAttackDist + e.radius);
+      case 'MidToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.midAttackDist + e.radius);
+      case 'LongToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.longAttackDist + e.radius);
       case 'IsCloseToAirEnemy':
-        return fight.enemiesOf(f).some((e) => e.pos.y > 0 && dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.closeAttackDist + e.desc.collisionWidth);
+        return fight.enemiesOf(f).some((e) => e.pos.y > 0 && dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.closeAttackDist + e.radius);
       case 'AboveToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= ABOVE_X);
     }
     return false;
@@ -164,7 +164,7 @@ export class AIController {
 
   private goto(g: { x: number; z: number }): void {
     this.mode = 1;
-    this.goal = this.f.fight.clampPos(g.x, g.z, this.f.desc.collisionWidth);
+    this.goal = this.f.fight.clampPos(g.x, g.z, this.f.radius);
   }
 
   private follow(mode: 2 | 3 | 4): void {
@@ -212,7 +212,7 @@ export class AIController {
         // the nearer of the two spots at `dist` on either side of the target, same depth
         const l = { x: t.pos.x - dist, z: t.pos.z }, r = { x: t.pos.x + dist, z: t.pos.z };
         const dl = Math.hypot(l.x - f.pos.x, l.z - f.pos.z), dr = Math.hypot(r.x - f.pos.x, r.z - f.pos.z);
-        this.goal = f.fight.clampPos((dl < dr ? l : r).x, t.pos.z, f.desc.collisionWidth);
+        this.goal = f.fight.clampPos((dl < dr ? l : r).x, t.pos.z, f.radius);
         this.step();
         break;
       }
