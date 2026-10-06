@@ -38,6 +38,11 @@ export class Fight {
   boss: Fighter | null = null;
   count = 0;            // enemies defeated
   record = 0;
+  /** Fight::v10 (00420cd0): the human's combo (hits, window, remaining). Window 1 s for the first hit, growing to
+   *  2.2 s at 20 hits (DAT_004f1218); the bar shows remaining/window. */
+  combo = { hits: 0, window: 0, left: 0 };
+  /** Enemy shown in the bottom-right life bar: the last one the human hit (Fight +0x3d0). */
+  target: Fighter | null = null;
   timeLeft = 0;
   spawnTimer = 0;
   finished = false;
@@ -192,7 +197,10 @@ export class Fight {
   killFighter(f: Fighter): void {
     if (f.dead) return;
     f.dead = true;
-    if (!this.players.includes(f)) this.count++;
+    if (!this.players.includes(f)) {
+      this.count++;
+      if (this.count > this.record) this.record = this.count;
+    }
   }
   lifeEnabled(_f: Fighter): boolean { return this.levelKey !== 'practiceLevel' || this.players.includes(_f); }
   protagonism(f: Fighter, t: number): void { this.protag = { f, t }; }
@@ -232,6 +240,11 @@ export class Fight {
       }
     }
     this.sparks = this.sparks.filter((s) => !s.done);
+    if (this.combo.hits > 0) {
+      this.combo.left -= fdt;
+      if (this.combo.left <= 0) this.combo = { hits: 0, window: 0, left: 0 };
+    }
+    if (this.target && this.target.dead) this.target = null;
     for (const c of this.clones) c.life -= fdt;
     this.clones = this.clones.filter((c) => c.life > 0);
     this.fighters = this.fighters.filter((f) => !f.dead || this.players.includes(f));
@@ -259,6 +272,13 @@ export class Fight {
     att.hitVictims.add(vic.uid);
     vic.receiveHit(h, att);
     att.hitConnect(h, r, vic);
+    if (att === this.players[0] && vic.team !== att.team) {
+      this.target = vic;
+      const c = this.combo;
+      c.hits++;
+      c.window = c.hits === 1 ? 1 : 1 + 1.2 * Math.min(1, c.hits / 20);
+      c.left = c.window;
+    }
   }
   /** Does `a`'s current hit reach `b`? Returns the intersection rect. */
   private check(a: Fighter, b: Fighter): [number, number, number, number] | null {

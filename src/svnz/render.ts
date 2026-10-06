@@ -117,43 +117,69 @@ function drawFighter(g: CanvasRenderingContext2D, f: Fighter, debug: boolean): v
   }
 }
 
-/** LifeBarManager (player 1): bars.png frame at (10,12), fills from fullBars.png, power orbs. */
+/** DrawableProportionalLifeBar (00435e20/00435ff0/00436260): frame = bars.png columns 0..W+20 + right cap (148..168),
+ *  W = min(lifeMax, 128); fill layers of fullBars.png: green 0..128, yellow (y26) for 128..256, cyan (y34) for 256..384. */
+function lifeBar(g: CanvasRenderingContext2D, x: number, y: number, life: number, lifeMax: number, proportional: boolean): void {
+  const bars = img('assets/images/hud/bars.png');
+  const full = img('assets/images/hud/fullBars.png');
+  if (!bars || !full) return;
+  if (!proportional) {
+    g.drawImage(bars, 0, 0, 168, 12, x, y, 168, 12);
+    const w = Math.round(128 * Math.max(0, life) / lifeMax);
+    if (w > 0) g.drawImage(full, 0, 0, w, 8, x + 20, y + 2, w, 8);
+    return;
+  }
+  const W = Math.min(lifeMax, 128);
+  g.drawImage(bars, 0, 0, W + 20, 12, x, y, W + 20, 12);
+  g.drawImage(bars, 148, 0, 20, 12, x + W + 20, y, 20, 12);
+  const L = Math.max(0, Math.ceil(life));
+  const a = Math.min(L, 128), b = Math.max(0, Math.min(L - 128, 128)), c = Math.max(0, Math.min(L - 256, 128));
+  if (a > 0) g.drawImage(full, 0, 0, a, 8, x + 20, y + 2, a, 8);
+  if (b > 0) g.drawImage(full, 0, 26, b, 8, x + 20, y + 2, b, 8);
+  if (c > 0) g.drawImage(full, 0, 34, c, 8, x + 20, y + 2, c, 8);
+}
+
+/** LifeBarManager / DrawablePowerBar / DrawableComboBar / TimeCounter: positions measured on the original (480x272). */
 export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
   const bars = img('assets/images/hud/bars.png');
   const full = img('assets/images/hud/fullBars.png');
+  const fx = img('assets/images/hud/barsEffect.png');
   const p = fight.players[0];
   if (!bars || !full || !p) return;
-  g.drawImage(bars, 0, 0, 168, 12, 10, 12, 168, 12);
+  // player: life frame (10,12), name above it, power frame (18,24) with orbs
+  lifeBar(g, 10, 12, p.life, p.lifeMax, false);
   g.drawImage(bars, 8, 12, 88, 20, 18, 24, 88, 20);
-  const lw = Math.round(128 * Math.max(0, p.life) / p.lifeMax);
-  if (lw > 0) g.drawImage(full, 0, 0, lw, 8, 30, 14, lw, 8);
   const orbs = Math.floor(p.power / 100);
-  const pw = orbs >= 3 ? 48 : Math.round(48 * (p.power % 100) / 100);
-  if (pw > 0) g.drawImage(full, 0, 8, pw, 8, 38, 26, pw, 8);
+  const base = orbs >= 3 ? 48 : Math.round(48 * (p.power % 100) / 100);   // 250 -> 2 orbs + half bar (measured)
+  if (base > 0) g.drawImage(full, 0, 8, base, 8, 38, 26, base, 8);
   if (orbs > 0) {
     const ow = orbs === 1 ? 8 : orbs === 2 ? 18 : 29;
     const oh = orbs === 1 ? 8 : 10;
     g.drawImage(full, 0, 16, ow, oh, 49, 35, ow, oh);
   }
+  if (p.power >= 300 && fx && Math.floor(fight.time * 6) % 2 === 0) g.drawImage(fx, 8, 12, 88, 20, 18, 24, 88, 20);
   drawText(g, 'small', p.name, 32, 4);
-  drawText(g, 'medium', 'Press ENTER for Help', 280, 2, 'center');
-  drawText(g, 'medium', `Record: ${fight.record}`, 470, 4, 'right');
-  drawText(g, 'medium', `Count: ${fight.count}`, 470, 18, 'right');
+  drawText(g, 'small', 'Press ENTER for Help', 200, 6);
+  drawText(g, 'smallOn', `Record: ${fight.record}`, 452, 11, 'right');
+  drawText(g, 'smallOn', `Count: ${fight.count}`, 452, 24, 'right');
   if (fight.wave?.mode === 'TimeMode') {
     const t = Math.ceil(fight.timeLeft);
-    drawText(g, 'medium', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, 240, 34, 'center');
+    drawText(g, 'smallOn', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, 240, 30, 'center');
   }
-  // enemy life bars (comboBars.png): above each CPU enemy
+  // last enemy hit: bottom right, name above its frame
+  const e = fight.target;
+  if (e && !e.dead) {
+    lifeBar(g, 304, 258, e.life, e.lifeMax, true);
+    drawText(g, 'small', e.name, 326, 250);
+  }
+  // combo counter: bottom left
   const cb = img('assets/images/hud/comboBars.png');
-  if (cb) {
-    for (const e of fight.fighters) {
-      if (e.dead || fight.players.includes(e)) continue;
-      const [sx, sy] = screenOf(e.pos.x, e.pos.y, e.pos.z);
-      const w = 32, x = sx - w / 2, y = sy - 70;
-      g.drawImage(cb, 0, 8, 64, 8, x, y, w, 4);
-      const lw2 = Math.round(w * e.life / e.lifeMax);
-      if (lw2 > 0) g.drawImage(cb, 0, 0, Math.round(64 * e.life / e.lifeMax), 8, x, y, lw2, 4);
-    }
+  const c = fight.combo;
+  if (cb && c.hits > 0) {
+    drawText(g, 'smallOn', `${c.hits} Hits`, 42, 244, 'center');
+    g.drawImage(cb, 0, 8, 64, 8, 10, 254, 64, 8);
+    const w = Math.max(0, Math.round(64 * c.left / c.window));
+    if (w > 0) g.drawImage(cb, 0, 0, w, 8, 10, 254, w, 8);
   }
 }
 

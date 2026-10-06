@@ -73,3 +73,15 @@ fightbanner 512x64, fuentes 256xN, hud/bars 256x32, fullBars 128x64, comboBars 6
 - Tooling de verificación contra el original: `research/drive.py` (lanza, enfoca, teclas por scancode, captura cliente) y `cap.py`.
 - Pendiente: IA real (Standar/BigDemon/Dracula decisions+reflexes), definiciones de golpe por enemigo, cámara, efectos,
   pantalla de ayuda/transición, comparación cuadro a cuadro con el original.
+
+## Ronda 3 — HUD fiel (2026-10-06)
+Medido en el original (research/drive.py, capturas 2x) y decodificado del exe (DrawableLifeBar/ProportionalLifeBar/ComboBar):
+- Vida del jugador: marco bars.png (0,0,168,12) en (10,12), relleno fullBars (0,0,128*vida/max,8) en (30,14), nombre small en (32,4).
+- Vida del enemigo (último golpeado por el humano, `Fight+0x3d0`): abajo a la derecha, marco proporcional en (304,258):
+  ancho interior W=min(vidaMax,128); marco = bars.png cols 0..W+20 + tapa derecha (148,0,20,12); nombre en (326,250).
+  Relleno por capas: verde 0..128, amarillo (fullBars y=26) 128..256, cian (y=34) 256..384 (00436260). >384 no dibuja relleno (literal del exe, sin verificar).
+- Combo (`Fight::v10` 00420cd0): "N Hits" (smallFontEnabled, naranja) centrado en x=42,y=244; barra comboBars 64x8 en (10,254): rojo base +
+  verde = tiempo restante/ventana. Ventana 1 s (1er golpe) creciendo a 2.2 s a 20 golpes (curva de easing sin decodificar: lineal).
+- "Press ENTER for Help" small blanca (200,6); Record/Count smallFontEnabled alineados a la derecha en x=452; Record sube en vivo.
+- Poder: 250 inicial = 2 orbes + media barra; a 300 parpadea el overlay MAX de barsEffect.png.
+- Pendiente de verificar contra el original: overlay de vida baja, barra del compañero (coop), jefes con vida > 384, curva exacta del combo.
