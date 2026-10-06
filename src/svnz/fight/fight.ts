@@ -3,7 +3,7 @@
 import { Fighter, CHARS, type Spark, type Clone } from './fighter';
 import { DB, makeDesc, type FighterSpec, type LevelDef, type WaveDef } from './data';
 import { AIPad, UserPad } from './pad';
-import { SimpleAI } from './ai';
+import { AIController } from './ai';
 import { playMusic, playSound } from '../core/audio';
 
 export interface Area { x0: number; z0: number; w: number; d: number }
@@ -58,7 +58,7 @@ export class Fight {
       f.usesPower = human;          // only the human gets a power meter (004205c0), starting at 250
       f.power = human ? 250 : 0;
       if (human) f.pad = new UserPad();
-      else { const p = new AIPad(); f.pad = p; f.ai = new SimpleAI(f, p); }
+      else { const p = new AIPad(); f.pad = p; f.ai = new AIController(f, p, desc.decisionsAI, desc.reflexesAI); f.evil = false; }
       this.place(f, spec.yPos);
       f.changeState(spec.state ?? desc.state);
       this.fighters.push(f);
@@ -94,7 +94,7 @@ export class Fight {
     const f = new Fighter(desc, this, { cpu: true, team, color: desc.color, life });
     const p = new AIPad();
     f.pad = p;
-    if (spec.attrs.reflexesAI !== '' || true) f.ai = new SimpleAI(f, p, spec.attrs.reflexesAI === '');
+    f.ai = new AIController(f, p, desc.decisionsAI, desc.reflexesAI);
     f.evil = team === 2;
     f.boss = asBoss;
     this.place(f, spec.yPos);
@@ -185,6 +185,45 @@ export class Fight {
   }
 
   // ------------------------------------------------------------------ manager hooks used by fighters
+  // --- IFight queries used by the AI (Fight vtable +0x64..+0xb0, 0041dfb0..0041f3f0)
+  enemiesOf(f: Fighter): Fighter[] { return this.fighters.filter((o) => o !== f && !o.dead && o.team !== f.team); }
+  /** Fight::v29: a random enemy (rand % n). */
+  randomEnemy(f: Fighter): Fighter | null {
+    const e = this.enemiesOf(f);
+    return e.length ? e[Math.floor(Math.random() * e.length) % e.length] : null;
+  }
+  /** Fight::v35: the closest enemy by 3D distance. */
+  closestEnemy(f: Fighter): Fighter | null {
+    let best: Fighter | null = null, bd = Infinity;
+    for (const o of this.enemiesOf(f)) {
+      const d = Math.hypot(o.pos.x - f.pos.x, o.pos.y - f.pos.y, o.pos.z - f.pos.z);
+      if (d <= bd) { bd = d; best = o; }
+    }
+    return best;
+  }
+  /** Fight::v36 / v37: strongest / weakest by `strength` (all 1 here, so the first enemy of the list). */
+  strongEnemy(f: Fighter): Fighter | null {
+    let best: Fighter | null = null, bs = -1;
+    for (const o of this.enemiesOf(f)) if (bs < o.desc.strength) { bs = o.desc.strength; best = o; }
+    return best;
+  }
+  weakEnemy(f: Fighter): Fighter | null {
+    let best: Fighter | null = null, bs = 99999;
+    for (const o of this.enemiesOf(f)) if (o.desc.strength < bs) { bs = o.desc.strength; best = o; }
+    return best;
+  }
+  /** Fight::v30 (0041e2a0): random point of the area keeping 1.2 x collisionWidth from the walls. */
+  randomPos(f: Fighter): { x: number; z: number } {
+    const ar = this.area;
+    const m = f.desc.collisionWidth * 1.2;
+    return { x: ar.x0 + m + Math.random() * (ar.w - 2 * m), z: ar.z0 + Math.random() * ar.d };
+  }
+  /** Fight::v16 / v17: keep a goal inside the fighting area (x by the fighter radius). */
+  clampPos(x: number, z: number, radius: number): { x: number; z: number } {
+    const ar = this.area;
+    return { x: Math.max(ar.x0 + radius, Math.min(ar.x0 + ar.w - radius, x)), z: Math.max(ar.z0, Math.min(ar.z0 + ar.d, z)) };
+  }
+
   nearestEnemy(f: Fighter): Fighter | null {
     let best: Fighter | null = null, bd = Infinity;
     for (const o of this.fighters) {
@@ -227,7 +266,7 @@ export class Fight {
     if (this.shake.t > 0) this.shake.t -= dt;
     for (const f of this.fighters) {
       if (f.dead) continue;
-      if (f.ai && this.phase === 'fight') f.ai.update(fdt);
+      if (f.ai && this.phase === 'fight' && f.life > 0) f.ai.update(fdt);
       f.update(fdt);
     }
     this.collide();

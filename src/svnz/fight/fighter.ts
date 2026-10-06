@@ -160,6 +160,8 @@ export class Fighter {
   name: string;
   sheet = 0;
   ai: { update(dt: number): void } | null = null;
+  /** IAIFighter target (Fighter +0x31c): who the AI is aiming at; null = none (-1). */
+  target: Fighter | null = null;
   lastAttacker: Fighter | null = null;
 
   constructor(readonly desc: CharDesc, readonly fight: Fight, opts: { cpu: boolean; team: number; color: number; life?: number }) {
@@ -316,13 +318,13 @@ export class Fighter {
       this.changeAnim(st.anim);
       return;
     }
-    if (sx !== 0) {
-      const t = this.pad.lockTarget ? this.fight.nearestEnemy(this) : null;
-      if (t && t.pos.x !== this.pos.x) this.facing = t.pos.x > this.pos.x ? 1 : -1;
-      else this.facing = sx > 0 ? 1 : -1;
-    }
+    // FUN_0040bea0: with a target the fighter always faces it (and may back away); otherwise it faces the stick.
+    const t = this.target && !this.target.dead ? this.target : null;
+    if (t && t.pos.x !== this.pos.x) this.facing = t.pos.x > this.pos.x ? 1 : -1;
+    else this.facing = sx > 0 ? 1 : -1;
     const sp = this.desc.walkSpeed;
-    this.setVel(sp * Math.abs(sx), this.vel.y, sp * sy);
+    this.vel.x = sp * sx;          // FUN_00410190: facing * (walkSpeed * stickX * facing)
+    this.vel.z = sp * sy;
     if (!this.walking) {
       this.walking = true;
       if (st.walkAnim !== -1) this.changeAnim(st.walkAnim);
@@ -365,7 +367,7 @@ export class Fighter {
     }
     // area limits (x by collision width, z by the fighting area)
     const ar = this.fight.area;
-    const half = this.desc.collisionWidth * 0.5;
+    const half = this.desc.collisionWidth;
     let x = this.pos.x;
     if (x < oldX || this.vel.x < 0 || this.desc.collisionWidth > 0) {
       if (x - half < ar.x0 && this.vel.x <= 0 && oldX >= x) x = Math.min(oldX, ar.x0 + half);
@@ -482,7 +484,7 @@ export class Fighter {
 
   private collideWithWall(): boolean {
     const ar = this.fight.area;
-    const half = this.desc.collisionWidth * 0.5;
+    const half = this.desc.collisionWidth;
     return (this.vel.x < 0 && this.pos.x - half <= ar.x0 + 0.01) || (this.vel.x > 0 && this.pos.x + half >= ar.x0 + ar.w - 0.01);
   }
 

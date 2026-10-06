@@ -85,3 +85,22 @@ Medido en el original (research/drive.py, capturas 2x) y decodificado del exe (D
 - "Press ENTER for Help" small blanca (200,6); Record/Count smallFontEnabled alineados a la derecha en x=452; Record sube en vivo.
 - Poder: 250 inicial = 2 orbes + media barra; a 300 parpadea el overlay MAX de barsEffect.png.
 - Pendiente de verificar contra el original: overlay de vida baja, barra del compañero (coop), jefes con vida > 384, curva exacta del combo.
+
+## Ronda 4 — IA original (2026-10-06)
+Decodificada del exe (clases AIController/AIManager/AIPart/AIPartReactionBucket, situaciones y reacciones) y de los datos de
+`0043dfc0` con `research/decode_ai.py` -> `src/svnz/data/ai.json`; implementada en `src/svnz/fight/ai.ts`.
+- Cada luchador CPU: Decisions AI (qué hacer) + Reflexes AI (reacciones rápidas, cada `reflexesFrequency`/60 s con fase aleatoria).
+- Parte = situación + peso "no hacer nada" + reacciones con pesos. Selección (00423a00): para cada parte con situación cierta,
+  r=floor(total*rand); si r <= total-idle se dispara y se elige reacción recorriendo pesos; si no, siguiente parte.
+- Situaciones (Fight 0x64..0xac): Close/Mid/LongToTarget = |dx| <= dist + radio(objetivo) y |dz| < 24; AboveToTarget = |dx| < 25 y |dz| < 24
+  (los dos encima: por eso el original se separa); CloseToAirTarget exige y > 50; Is*ToEnemy mira el alcance del ENEMIGO sobre mí.
+- Reacciones: Wait(ticks), RandomWalk, Close/Mid/LongToTarget (modo 2/3/4: ir al punto a `dist` del objetivo por el lado más cercano),
+  AboveToTarget (ir a su posición), StalkTarget (Fight::v44: lado actual, 30..90 en z y 0..110 en x), StayAway (>=100 px),
+  Find{NewTargetRandom,Closest,Strong,Weak}Target, PressButton(n), PressButtonAimingToTarget(n) (empuja el stick hacia el objetivo y pulsa).
+- Movimiento (FUN_00423fe0): vector unitario hacia el destino hasta quedar a <5 px; la reacción termina cuando el controlador queda
+  ocioso (follow/wait) o el luchador deja de moverse (walk/stalk/away). Reflejo disparado: cancela movimiento y pone el temporizador de
+  decisión en 1 s.
+- Caminar con objetivo: siempre mira al objetivo y la velocidad es walkSpeed*stick con signo (retrocede mirando al rival).
+- collisionWidth es el margen completo a las paredes (no la mitad).
+- Corrige el bug "encima del enemigo": ya nadie se queda clavado; el enemigo se separa (Stalk/Close) y se reacomoda.
+Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos especiales (estados FastMove/BodySlam ya enlazados por StateEquals).
