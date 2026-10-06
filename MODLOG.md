@@ -142,3 +142,13 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
 - IA: nuevas situaciones (TargetAttacking, TargetAirborne, TargetOffDepth, LowLife, TargetBehind) y reacciones (AlignDepth, JumpAway).
   El héroe se cubre ante ataques/cercanía, salta lejos de los problemas, se alinea en profundidad para disparar y se retira con poca vida;
   el jefe se alinea en z, dispara a quemarropa o contra objetivos en el aire.
+
+## Ronda 9 — estrellas ninja (2026-10-06)
+- El jefe XA ya no hace daño al tocarlo (se quitó el hit de contacto; Mina es sobre todo cuerpo a cuerpo).
+- Power-up de nivel bonus: una estrella dorada aparece en el mapa (a los 4 s y luego cada 10 s si no hay ninguna ni poder activo; dura 14 s
+  en el suelo) y al tocarla Mina tiene 20 s de estrellas (`Fighter.stars`, icono + barra bajo la de poder). Con el botón especial (4)
+  lanza una estrella (`Mina_StarThrow`, control `HasStars` al frente de `Mina_Control`).
+- Animación reutilizada: 7000 = FastAttack (1000) sin el arco del tajo (frames 0,1,1,6; mano en frame.mz). La estrella sale pequeña (x0.5) y
+  crece en 0.15 s, gira en vuelo, se inclina en z hacia el enemigo más cercano del frente; daño 10 (jefe: mitad por armadura), suma combo.
+- Sprites 8-bit: `tools/build_star.py` rasteriza `tools/star-source.svg` (SVG Repo), máscara de 1 bit, aplanada a 16x16 / 22x22 con paleta
+  fija (contorno oscuro + 3 tonos, luz arriba-izquierda), 4 cuadros de giro -> `public/assets/bonus/star.png`, `data/star.json`.
