@@ -140,7 +140,8 @@ export class Fight {
       if (w.mode === 'BossMode') {
         if (!this.boss && this.queuePos < this.queue.length) this.boss = this.spawn(this.queue[this.queuePos++], team, true);
         const extras = alive.filter((f) => f !== this.boss);
-        if (this.boss && !this.boss.dead && extras.length < w.activeExtras && this.extrasQueue.length) {
+        // a boss that is dying (life 0, death animation still playing) already ends the wave: no more extras fall in
+        if (this.boss && !this.boss.dead && this.boss.life > 0 && extras.length < w.activeExtras && this.extrasQueue.length) {
           this.spawnTimer -= dt;
           if (this.spawnTimer <= 0) {
             this.spawn(this.extrasQueue[this.extrasPos % this.extrasQueue.length], team, false);
@@ -148,10 +149,11 @@ export class Fight {
             this.spawnTimer = 1;
           }
         }
-        if (this.boss && this.boss.dead) this.clear();
+        if (this.boss && (this.boss.dead || this.boss.life <= 0)) this.clear();
       } else {
         const loops = w.mode === 'TimeMode' || w.mode === 'SurvivalMode';
-        if (alive.length < w.activeEnemies && (loops || this.queuePos < this.queue.length)) {
+        if (w.mode === 'TimeMode') this.timeLeft = Math.max(0, this.timeLeft - dt);
+        if (!(w.mode === 'TimeMode' && this.timeLeft <= 0) && alive.length < w.activeEnemies && (loops || this.queuePos < this.queue.length)) {
           this.spawnTimer -= dt;
           if (this.spawnTimer <= 0) {
             if (this.queuePos >= this.queue.length) this.queuePos = Math.min(w.loopIndex, this.queue.length - 1);
@@ -160,10 +162,7 @@ export class Fight {
           }
         }
         if (!loops && this.queuePos >= this.queue.length && alive.length === 0) this.clear();
-        if (w.mode === 'TimeMode') {
-          this.timeLeft -= dt;
-          if (this.timeLeft <= 0) { this.timeLeft = 0; this.clear(); }
-        }
+        if (w.mode === 'TimeMode' && this.timeLeft <= 0) this.clear();
       }
       if (this.players.some((p) => p.dead || p.life === 0 && p.stateName === 'Dead')) {
         if (this.players.some((p) => p.dead)) this.fail();
