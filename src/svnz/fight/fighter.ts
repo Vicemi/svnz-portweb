@@ -3,13 +3,14 @@
 import fsmJson from '../data/fsm.json';
 import charsJson from '../data/chars.json';
 import xaJson from '../data/xa.json';
+import starJson from '../data/star.json';
 import type { Act, Anim, CharDesc, CharSprites, Cond, ControlTrig, FState, FsmData, HitDef, Params, Rect, Trig } from './types';
 import type { Fight } from './fight';
 import type { Pad } from './pad';
 import { playSound } from '../core/audio';
 
 export const FSM = fsmJson as unknown as FsmData;
-export const CHARS = { ...(charsJson as unknown as Record<string, CharSprites>), ...(xaJson as unknown as Record<string, CharSprites>) };
+export const CHARS = { ...(charsJson as unknown as Record<string, CharSprites>), ...(xaJson as unknown as Record<string, CharSprites>), ...(starJson as unknown as Record<string, CharSprites>) };
 
 const TICK = 1 / 60; // DAT_004f6b40: ticks -> seconds
 const ANIM_FPS = 60;
@@ -121,6 +122,7 @@ export class Fighter {
   armorMode = false;                   // characters.xml armorMode
   // XA shield (bonus characters): while `guard` is up frontal weak hits are blocked; each block loads `guardHits`
   // (it drains over time) and the 4th one breaks the guard through.
+  stars = 0;                           // seconds left of the ninja-star power-up (bonus levels)
   guard = false;
   guardHits = 0;
   blockedNow = false;                  // the hit being resolved was blocked
@@ -276,6 +278,7 @@ export class Fighter {
   // ---------------------------------------------------------------- update (Fighter::v3 @ 0040b160)
   update(dt: number): void {
     if (this.guardHits > 0) this.guardHits = Math.max(0, this.guardHits - dt * 0.4);
+    if (this.stars > 0) this.stars = Math.max(0, this.stars - dt);
     // FUN_0040b230: pause -> affect -> displacement timers
     let d = dt;
     if (this.pause > 0) {
@@ -484,6 +487,7 @@ export class Fighter {
       case 'AffectTimeEnd': return this.affect === 0;
       case 'IsFrontHit': return this.frontHit;
       case 'IsUpVel': return this.vel.y > 0;
+      case 'HasStars': return this.stars > 0;
       case 'HasPower': return this.usesPower ? this.power > 0 : true;
       case 'HasFullPower': return this.usesPower ? this.power === 300 : true;
       case 'HasEnoughPower': return this.usesPower ? i0 <= this.power : true;
@@ -514,6 +518,7 @@ export class Fighter {
       case 'SetArmorMode': this.armor = true; break;
       // bonus characters (XA): shield up, effect at the body (i=[anim, forward, height, jitter]), vanish
       case 'GuardOn': this.guard = true; break;
+      case 'ThrowStar': this.fight.throwStar(this, s[0]); break;
       case 'XaSpark': {
         const j = i[3] ?? 0;
         this.fight.addSpark(i[0], this.pos.x + this.facing * i[1] + (Math.random() * 2 - 1) * j, this.pos.y + i[2] + (Math.random() * 2 - 1) * j * 0.6, this.pos.z + 1, this.facing, 'XaFx');
