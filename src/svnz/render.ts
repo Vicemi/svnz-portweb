@@ -183,9 +183,10 @@ export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
   }
 }
 
+/** Banner text of the wave flow ("Are You Ready?"): small font, translucent black band measured on the original. */
 export function drawBanner(g: CanvasRenderingContext2D, text: string): void {
   if (!text) return;
-  g.fillStyle = 'rgba(0,0,0,0.55)';
-  g.fillRect(0, 105, W, 22);
-  drawText(g, 'medium', text, W / 2, 108, 'center');
+  g.fillStyle = 'rgba(0,0,0,0.45)';
+  g.fillRect(0, 127, W, 18);
+  drawText(g, 'small', text, W / 2, 132, 'center');
 }
