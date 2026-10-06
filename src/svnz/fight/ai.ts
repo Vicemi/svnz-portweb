@@ -14,6 +14,9 @@ type Param = ['i', number] | ['s', string];
 interface Bucket { w: number; r: string; params: Param[] }
 interface Part { sit: string; w: number; params: Param[]; buckets: Bucket[] }
 const AIS = aiJson as unknown as Record<string, { name: string; parts: Part[] }>;
+/** Extra AI tables (bonus characters). */
+export function registerAI(name: string, parts: Part[]): void { AIS[name] = { name, parts }; }
+export type { Part as AIPart };
 
 const TICK = 1 / 60;
 const ARRIVE = 5;          // DAT_004f1200: goto tolerance

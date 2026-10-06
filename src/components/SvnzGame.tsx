@@ -70,15 +70,16 @@ export default function SvnzGameView() {
 
   // menus on touch: tap the upper/lower part of the screen to move, the middle to select
   const menuTap = (e: React.PointerEvent) => {
-    if (!isTouch || (screen !== 'menu' && screen !== 'logo' && screen !== 'vicemi')) return;
-    const y = e.clientY / window.innerHeight;
-    key(screen === 'logo' || screen === 'vicemi' ? 'Enter' : y < 0.42 ? 'ArrowUp' : y > 0.78 ? 'ArrowDown' : 'Enter');
+    // logos: a tap skips them. Menus take pointer events directly on the canvas (hover + click, desktop and touch).
+    if (screen === 'logo' || screen === 'vicemi') key('Enter');
   };
   const back = (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); gameRef.current?.backAction(); };
 
   return (
     <div className="sv-stage" ref={stageRef} onPointerDown={menuTap}>
-      <canvas ref={canvasRef} className="sv-canvas" tabIndex={0} />
+      <canvas ref={canvasRef} className="sv-canvas" tabIndex={0}
+        onPointerMove={(e) => gameRef.current?.pointer(e.clientX, e.clientY, false)}
+        onPointerDown={(e) => gameRef.current?.pointer(e.clientX, e.clientY, true)} />
       {isTouch && portrait && (
         <div className="sv-rotate"><div className="sv-rotate-inner"><span className="sv-rotate-icon">🔄</span><span>Girá el celular para jugar</span></div></div>
       )}

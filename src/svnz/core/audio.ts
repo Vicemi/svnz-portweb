@@ -14,6 +14,11 @@ const SOUNDS: Record<string, string> = {
   step: 'assets/audio/fx/fight/step.ogg',
   special: 'assets/audio/fx/fight/special.ogg',
   storm: 'assets/audio/fx/stage/storm.ogg',
+  // sounds of the XA characters (bonus bosses)
+  xa_bullet: 'assets/xa/fx/bullet.ogg', xa_cannon: 'assets/xa/fx/bullet_cannon.ogg', xa_wall: 'assets/xa/fx/bullet_wall_1.ogg',
+  xa_wall2: 'assets/xa/fx/bullet_wall_2.ogg', xa_death: 'assets/xa/fx/enemy_death.ogg', xa_shot: 'assets/xa/fx/enemy_shot.ogg',
+  xa_jump: 'assets/xa/fx/jump_hero.ogg', xa_double_jump: 'assets/xa/fx/double_jump.ogg', xa_hurt: 'assets/xa/fx/hurt.ogg',
+  xa_hero_death: 'assets/xa/fx/player_death.ogg', xa_entrance: 'assets/xa/fx/init_fall.ogg', xa_shield: 'assets/xa/fx/s_1.ogg',
   Mina_Dead: 'assets/audio/fx/fight/voices/mina/ko.ogg',
   Mina_Damage: 'assets/audio/fx/fight/voices/mina/damage.ogg',
   Mina_Action1: 'assets/audio/fx/fight/voices/mina/action1.ogg',

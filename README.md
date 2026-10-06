@@ -32,17 +32,19 @@ El juego es **jugable**, pero todavía hay detalles por igualar con el original.
 ### ✅ Lo que ya funciona
 
 - **Flujo del original:** pantalla de Batoví, pantalla de vicemi.dev (el logo del port), menú principal, pelea, ayuda (**Enter**) y salida con **Esc**.
-- **Los 5 modos de juego:**
+- **Los 5 modos de juego originales (más el modo bonus):**
   - **Normal Mode (modo historia):** 7 oleadas con 4 jefes (Ninja Dorado, Gran Demonio, Mina poseída y Drácula).
   - **Time Attack:** sobrevivir 5 minutos.
   - **Coop Survival:** con una compañera controlada por la IA.
   - **Practice:** enemigos no agresivos que aparecen sin parar.
   - **Enemy Test:** jugar como cualquiera de los enemigos.
+- **Bonus Bosses (modo extra):** una sección nueva del menú con los personajes de **XA** dentro del motor de SVNZ, sin tocar el juego principal. Primero el **Jefe de XA** (camina, dispara su abanico de 5 balas, hace daño al tocarlo y explota al caer) y después el **Héroe de XA** (camina, salta dos veces y dispara sus bolas de energía). Ambos se mueven en el plano 2.5D con IAs propias, usan los sonidos de XA y mantienen la música de SVNZ.
+- **Menú con mouse y toque:** además del teclado, se puede elegir cada opción con el mouse (resalta al pasar) o tocándola en el celular. El original solo permitía el teclado.
 - **Peleadores:** Mina con todos sus ataques (rápidos, fuertes, combos de hasta 5 golpes, saltos, dash, defensa con parry y especiales), Ninja demonio, Ninja genérico, Murciélago, Gran Demonio y Drácula; todos con las **máquinas de estados reales** del juego.
 - **Golpes y daño:** zonas de golpe y de cuerpo por cuadro, pausa de impacto, chispas, caídas, rebotes, levantarse, invulnerabilidad al levantarse y muerte.
 - **IA original:** cada enemigo decide y reacciona con las tablas del juego (se acerca, rodea, se aleja, espera, elige objetivo y ataca según la distancia).
 - **HUD fiel:** vida de Mina con su nombre, barra de poder con orbes y "MAX", vida del último enemigo golpeado abajo a la derecha, **contador de combos** abajo a la izquierda con su tiempo, Record y Count.
-- **Audio original:** música, efectos y voces.
+- **Audio original:** música, efectos y voces (y los efectos de XA en el modo bonus).
 - **Celular:** controles táctiles con los 6 botones, aviso para girar el teléfono y **botón de pantalla completa**.
 
 ### 🗺️ Planes a futuro
@@ -52,7 +54,8 @@ El juego es **jugable**, pero todavía hay detalles por igualar con el original.
 - [x] HUD y contador de combos
 - [ ] Comparación lado a lado con el original para los últimos detalles (cámara, efectos de golpe, transición de pelea)
 - [ ] Cámara y animaciones especiales de los jefes
-- [ ] Soporte para mods (personajes y niveles nuevos)
+- [x] Bonus Bosses: jefe y héroe de XA
+- [ ] Más personajes bonus y soporte para mods (personajes y niveles nuevos)
 
 ---
 
@@ -132,6 +135,7 @@ La versión pública vivirá en **[svnz-portweb.vicemi.dev](https://svnz-portweb
 | :--- | :--- |
 | `/?level=normalLevel` | Entra directo al modo historia |
 | `/?level=timeAttackLevel` / `survivalLevel` / `practiceLevel` | Otros modos |
+| `/?level=bonusXaLevel` | Bonus Bosses: jefe y héroe de XA |
 | `/?level=bigDemonLevel` / `draculaLevel` / `batLevel` / `demonNinjaLevel` / `genericNinjaLevel` | Enemy Test |
 | `/?debug=1` | Dibuja las zonas de golpe (rojo) y de cuerpo (azul) |
 | `/?touch=1` / `/?touch=0` | Fuerza / desactiva los controles táctiles |
@@ -151,7 +155,8 @@ La versión pública vivirá en **[svnz-portweb.vicemi.dev](https://svnz-portweb
 │       ├── render.ts         # sprites, fuentes y HUD
 │       ├── core/             # carga de assets, audio, teclado
 │       ├── fight/            # luchador (máquina de estados, física), pelea y oleadas, IA, datos
-│       └── data/             # chars.json, fsm.json y ai.json (generados por tools/)
+│       ├── bonus/            # datos del modo Bonus Bosses (estados, golpes, IA, niveles y menú de los personajes de XA)
+│       └── data/             # chars.json, fsm.json, ai.json y xa.json (generados por tools/)
 ├── tools/                    # build_chars.py, build_fsm.py, gen-manifest.mjs
 ├── research/                 # herramientas de descompilación (Ghidra, decodificadores, captura del original)
 └── MODLOG.md                 # diario de ingeniería inversa
@@ -170,4 +175,5 @@ El código del port (la reimplementación en TypeScript y las herramientas) lo e
 - **Batoví Games Studio** — creadores del juego original: Federico Medina (motor y programación), Sebastián García (diseño, gráficos, personajes y efectos de sonido) y Juan Fornos (música). Voz: Giselle Ruiz.
 - **[Ghidra](https://ghidra-sre.org/)** — análisis del ejecutable.
 - **[universal-modder](https://github.com/rehan-remade/universal-modder)** — skills y metodología de ingeniería inversa.
+- **Calcar y Batoví Games Studio** — creadores de **XA: Contra los Cuatreros Galácticos**, de donde salen el jefe, el héroe y sus sonidos del modo Bonus Bosses.
 - **Vicemi** ([vicemi.dev](https://vicemi.dev)) — dirección del proyecto y port.

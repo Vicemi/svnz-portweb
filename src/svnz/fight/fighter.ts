@@ -2,13 +2,14 @@
 // original object's fields (Fighter base; the IConditionFighter/IActionFighter interface sits at +0x150).
 import fsmJson from '../data/fsm.json';
 import charsJson from '../data/chars.json';
+import xaJson from '../data/xa.json';
 import type { Act, Anim, CharDesc, CharSprites, Cond, ControlTrig, FState, FsmData, HitDef, Params, Rect, Trig } from './types';
 import type { Fight } from './fight';
 import type { Pad } from './pad';
 import { playSound } from '../core/audio';
 
 export const FSM = fsmJson as unknown as FsmData;
-export const CHARS = charsJson as unknown as Record<string, CharSprites>;
+export const CHARS = { ...(charsJson as unknown as Record<string, CharSprites>), ...(xaJson as unknown as Record<string, CharSprites>) };
 
 const TICK = 1 / 60; // DAT_004f6b40: ticks -> seconds
 const ANIM_FPS = 60;
@@ -78,7 +79,7 @@ class AnimPlayer {
   }
 }
 
-export interface Spark { anim: Anim; id: number; frame: number; t: number; x: number; y: number; z: number; facing: number; done: boolean }
+export interface Spark { char?: string; anim: Anim; id: number; frame: number; t: number; x: number; y: number; z: number; facing: number; done: boolean }
 export interface Clone { img: string; sheet: number; x: number; y: number; z: number; facing: number; ox: number; oy: number; flip: string; life: number; max: number; color: [number, number, number, number] }
 
 let nextId = 1;
@@ -518,6 +519,9 @@ export class Fighter {
       case 'ShakeGround': this.fight.shakeGround(i[0], i[1]); break;
       case 'ShakeWalls': this.fight.shakeWalls(i[0], i[1]); break;
       case 'PlayGeneralSound': playSound(s[0]); break;
+      // bonus characters (XA): projectiles. Shoot i=[anim, forward offset, height, speed] s=[hit] b=[aim at target]
+      case 'Shoot': this.fight.shoot(this, s[0], i[0], i[1], i[2], i[3], !!b[0]); break;
+      case 'ShootFan': this.fight.shootFan(this, s[0], i[0], i[1], i[2], i[3], i[4] ?? 5); break;
       case 'PlayCharacterSound': break;
       case 'DramaticSlowMotion': this.fight.slowMotion(f[0], f[1]); break;
       case 'Blink': break;
