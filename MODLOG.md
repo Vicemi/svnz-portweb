@@ -119,3 +119,14 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
 - Bug corregido: radio del luchador = collisionWidth*0.5 (0040a5c4), no el ancho completo (los enemigos atacaban demasiado lejos).
 - Bug corregido: velocidad al caminar = f48 del estado salvo que f4c != 0 (entonces walkSpeed del personaje) (Fighter::v36 004099e0);
   el murciélago (walkSpeed DEFAULT=0 en el xml, f48=150 en Bat_Fly) se quedaba inmóvil.
+
+## Ronda 7 — menú con mouse y Bonus Bosses (2026-10-06)
+- Menú: mouse/toque (hover resalta, clic activa; `SvnzGame.pointer`), lista compacta (104 + 23·i, 256x22) debajo del título y de la
+  línea "Vicemi Mod" de mainScreen.png (antes tapaba las letras); 7 entradas con "Bonus Bosses" (submenú `bonusBosses`).
+- Modo bonus (`src/svnz/bonus/data.ts`, no toca los datos originales): jefe y héroe de XA como luchadores del motor SVNZ con
+  estados/golpes/controles/IA propios; sprites convertidos de XA por `tools/build_xa_chars.py` -> `data/xa.json` (escala 0.62 el jefe).
+  Motor: proyectiles (`Fight.shoot/shootFan`, derivan en z hacia el objetivo), acciones `Shoot`/`ShootFan`, `CharSprites.scale`.
+- Jefe XA: camina, abanico de 5 balas (60..120°, 200 px/s) con la pose de disparo, contacto hace daño (hit re-armado cada ciclo),
+  armadura, explosión BOSS_DEAD ~4 s y sacudida. Héroe XA: caminar, salto y doble salto (segundo salto solo desde `Jump`),
+  bola de energía, reacción de daño/caída/levantarse reutilizando los estados Human con anims 5xxx del héroe.
+- Oleadas: jefe (música bgmBoss) y luego héroe (bgmNormal). Sonidos de XA en `assets/xa/fx`.
