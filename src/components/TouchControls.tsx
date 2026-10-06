@@ -1,23 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * Mobile controls in the style of most action games:
- * - LEFT half of the screen is a floating joystick: put a finger anywhere, drag toward a direction. The stick
- *   origin follows the finger when it is dragged past the ring, so reversing direction is instant. Diagonals
- *   press two keys (e.g. right + up to climb while walking onto a ladder).
- * - RIGHT half holds big JUMP / FIRE buttons with generous hit areas. Each finger is tracked on its own
- *   (true multitouch), and a finger can slide from one button to the other without lifting.
- * All of it is turned into keyboard events, so the game's own input code (bat::Keyboard semantics) is reused.
+ * Mobile controls for Super Vampire Ninja Zero (a 2.5D beat 'em up, so the stick moves on 8 directions):
+ * - LEFT half: floating joystick (arrows).
+ * - RIGHT half: the six buttons of the original keyboard layout, as a fighting-game cluster:
+ *     Q fast attack, W strong attack, E jump, A special, S defense/parry, D dash.
+ * Each finger is tracked on its own and can slide between buttons. Everything becomes keyboard events, so the
+ * game's own input code (bat::Keyboard semantics) is reused unchanged.
  */
 
-type Key = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown' | 'Space' | 'KeyX' | 'Escape';
+type Key = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown' | 'KeyQ' | 'KeyW' | 'KeyE' | 'KeyA' | 'KeyS' | 'KeyD';
 
-const STICK_RADIUS = 56;   // px the knob can travel from the origin before the origin starts to follow
-const DEAD_ZONE = 14;      // px of slack before any direction is pressed
-const VERTICAL_RATIO = 0.6; // |dy| must exceed this share of the distance to count as up/down (≈37° cone)
+const STICK_RADIUS = 56;
+const DEAD_ZONE = 14;
 
-const held = new Map<Key, number>(); // reference count per key across all fingers
+const BUTTONS: { key: Key; label: string; cls: string }[] = [
+  { key: 'KeyQ', label: 'Q', cls: 'sv-b-fast' },
+  { key: 'KeyW', label: 'W', cls: 'sv-b-strong' },
+  { key: 'KeyE', label: 'E', cls: 'sv-b-jump' },
+  { key: 'KeyA', label: 'A', cls: 'sv-b-special' },
+  { key: 'KeyS', label: 'S', cls: 'sv-b-defense' },
+  { key: 'KeyD', label: 'D', cls: 'sv-b-dash' },
+];
+const SUB: Record<Key, string> = {
+  KeyQ: 'rápido', KeyW: 'fuerte', KeyE: 'salto', KeyA: 'especial', KeyS: 'defensa', KeyD: 'dash',
+  ArrowLeft: '', ArrowRight: '', ArrowUp: '', ArrowDown: '',
+};
 
+const held = new Map<Key, number>();
 function keyDown(code: Key): void {
   const n = held.get(code) ?? 0;
   held.set(code, n + 1);
@@ -36,62 +46,51 @@ function releaseAll(): void {
 }
 const buzz = (ms: number) => { try { navigator.vibrate?.(ms); } catch { /* not supported */ } };
 
-/** Keys pressed for a drag vector (screen coords: +y = down). */
+/** 8-way: a direction counts when its axis is past ~22.5° of the drag angle. */
 function stickKeys(dx: number, dy: number): Key[] {
   const d = Math.hypot(dx, dy);
   if (d < DEAD_ZONE) return [];
   const out: Key[] = [];
-  if (Math.abs(dx) > DEAD_ZONE * 0.8 && Math.abs(dx) / d > 0.38) out.push(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
-  if (Math.abs(dy) / d > VERTICAL_RATIO) out.push(dy > 0 ? 'ArrowDown' : 'ArrowUp');
+  if (Math.abs(dx) / d > 0.38) out.push(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
+  if (Math.abs(dy) / d > 0.38) out.push(dy > 0 ? 'ArrowDown' : 'ArrowUp');
   return out;
 }
 
 interface Stick { id: number; ox: number; oy: number; x: number; y: number; keys: Key[] }
-interface Btn { id: number; key: Key | null }
 
 export default function TouchControls({ active }: { active: boolean }) {
-  const jumpRef = useRef<HTMLDivElement>(null);
-  const fireRef = useRef<HTMLDivElement>(null);
+  const refs = useRef(new Map<Key, HTMLDivElement>());
   const stick = useRef<Stick | null>(null);
-  const buttons = useRef(new Map<number, Btn>());
+  const fingers = useRef(new Map<number, Key | null>());
   const [view, setView] = useState<{ ox: number; oy: number; x: number; y: number } | null>(null);
-  const [pressed, setPressed] = useState<{ jump: boolean; fire: boolean }>({ jump: false, fire: false });
+  const [down, setDown] = useState<Set<Key>>(new Set());
 
-  // leaving gameplay (pause, menus, game over) must never leave a key stuck down
   useEffect(() => {
     if (!active) {
       stick.current = null;
-      buttons.current.clear();
+      fingers.current.clear();
       setView(null);
-      setPressed({ jump: false, fire: false });
+      setDown(new Set());
       releaseAll();
     }
   }, [active]);
   useEffect(() => {
-    const blur = () => { stick.current = null; buttons.current.clear(); setView(null); releaseAll(); };
+    const blur = () => { stick.current = null; fingers.current.clear(); setView(null); setDown(new Set()); releaseAll(); };
     window.addEventListener('blur', blur);
     document.addEventListener('visibilitychange', blur);
     return () => { window.removeEventListener('blur', blur); document.removeEventListener('visibilitychange', blur); };
   }, []);
 
-  const refreshPressed = () => {
-    let jump = false, fire = false;
-    for (const b of buttons.current.values()) { if (b.key === 'Space') jump = true; if (b.key === 'KeyX') fire = true; }
-    setPressed({ jump, fire });
-  };
+  const refresh = () => setDown(new Set([...fingers.current.values()].filter((k): k is Key => !!k)));
 
-  /** Which action button lies under a point (hit areas are larger than the drawn circles). */
   const buttonAt = (x: number, y: number): Key | null => {
-    const hit = (el: HTMLDivElement | null, pad: number) => {
-      if (!el) return Infinity;
+    let best: Key | null = null, bd = Infinity;
+    for (const [k, el] of refs.current) {
       const r = el.getBoundingClientRect();
-      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      const d = Math.hypot(x - cx, y - cy);
-      return d <= r.width / 2 + pad ? d : Infinity;
-    };
-    const j = hit(jumpRef.current, 34), f = hit(fireRef.current, 28);
-    if (j === Infinity && f === Infinity) return null;
-    return j <= f ? 'Space' : 'KeyX';
+      const d = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2));
+      if (d <= r.width / 2 + 14 && d < bd) { bd = d; best = k; }
+    }
+    return best;
   };
 
   const setStickKeys = (s: Stick, keys: Key[]) => {
@@ -102,19 +101,17 @@ export default function TouchControls({ active }: { active: boolean }) {
 
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* pointer already gone */ }
+    try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* gone */ }
     const x = e.clientX, y = e.clientY;
-    if (x < window.innerWidth / 2) {
-      if (stick.current) return; // one stick at a time; extra left-side fingers are ignored
-      const s: Stick = { id: e.pointerId, ox: x, oy: y, x, y, keys: [] };
-      stick.current = s;
+    if (x < window.innerWidth * 0.45) {
+      if (stick.current) return;
+      stick.current = { id: e.pointerId, ox: x, oy: y, x, y, keys: [] };
       setView({ ox: x, oy: y, x, y });
     } else {
-      const key = buttonAt(x, y) ?? 'Space'; // anywhere else on the right half = jump (most used in frantic bits)
-      buttons.current.set(e.pointerId, { id: e.pointerId, key });
-      keyDown(key);
-      buzz(key === 'Space' ? 12 : 6);
-      refreshPressed();
+      const key = buttonAt(x, y);
+      fingers.current.set(e.pointerId, key);
+      if (key) { keyDown(key); buzz(8); }
+      refresh();
     }
   };
 
@@ -124,24 +121,21 @@ export default function TouchControls({ active }: { active: boolean }) {
       let { ox, oy } = s;
       const x = e.clientX, y = e.clientY;
       const dx = x - ox, dy = y - oy, d = Math.hypot(dx, dy);
-      if (d > STICK_RADIUS) { // floating origin: drag it along so the opposite direction is one short swipe away
-        ox = x - (dx / d) * STICK_RADIUS;
-        oy = y - (dy / d) * STICK_RADIUS;
-      }
+      if (d > STICK_RADIUS) { ox = x - (dx / d) * STICK_RADIUS; oy = y - (dy / d) * STICK_RADIUS; }
       s.ox = ox; s.oy = oy; s.x = x; s.y = y;
       setStickKeys(s, stickKeys(x - ox, y - oy));
       setView({ ox, oy, x, y });
       return;
     }
-    const b = buttons.current.get(e.pointerId);
-    if (b) {
+    if (fingers.current.has(e.pointerId)) {
+      const cur = fingers.current.get(e.pointerId) ?? null;
       const key = buttonAt(e.clientX, e.clientY);
-      if (key && key !== b.key) { // finger slid onto the other button
-        if (b.key) keyUp(b.key);
+      if (key && key !== cur) {
+        if (cur) keyUp(cur);
         keyDown(key);
-        b.key = key;
-        buzz(8);
-        refreshPressed();
+        fingers.current.set(e.pointerId, key);
+        buzz(6);
+        refresh();
       }
     }
   };
@@ -154,11 +148,11 @@ export default function TouchControls({ active }: { active: boolean }) {
       setView(null);
       return;
     }
-    const b = buttons.current.get(e.pointerId);
-    if (b) {
-      if (b.key) keyUp(b.key);
-      buttons.current.delete(e.pointerId);
-      refreshPressed();
+    if (fingers.current.has(e.pointerId)) {
+      const k = fingers.current.get(e.pointerId);
+      if (k) keyUp(k);
+      fingers.current.delete(e.pointerId);
+      refresh();
     }
   };
 
@@ -170,28 +164,22 @@ export default function TouchControls({ active }: { active: boolean }) {
   })() : null;
 
   return (
-    <div
-      className="xa-touch"
-      onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUp}
-      onPointerCancel={onUp}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {/* left half: floating stick (a faint hint is shown where it usually goes) */}
+    <div className="sv-touch" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+      onContextMenu={(e) => e.preventDefault()}>
       {view && knob ? (
         <>
-          <div className="xa-stick-ring" style={{ left: view.ox, top: view.oy }} />
-          <div className="xa-stick-knob" style={{ left: knob.x, top: knob.y }} />
+          <div className="sv-stick-ring" style={{ left: view.ox, top: view.oy }} />
+          <div className="sv-stick-knob" style={{ left: knob.x, top: knob.y }} />
         </>
       ) : (
-        <div className="xa-stick-hint" aria-hidden="true"><span>◀ ▶</span></div>
+        <div className="sv-stick-hint" aria-hidden="true"><span>✥</span></div>
       )}
-
-      {/* right half: action buttons */}
-      <div ref={fireRef} className={'xa-act xa-act-fire' + (pressed.fire ? ' is-down' : '')} aria-label="Disparar">FUEGO</div>
-      <div ref={jumpRef} className={'xa-act xa-act-jump' + (pressed.jump ? ' is-down' : '')} aria-label="Saltar">SALTO</div>
-
+      {BUTTONS.map((b) => (
+        <div key={b.key} ref={(el) => { if (el) refs.current.set(b.key, el); else refs.current.delete(b.key); }}
+          className={'sv-act ' + b.cls + (down.has(b.key) ? ' is-down' : '')} aria-label={SUB[b.key]}>
+          <span className="sv-act-k">{b.label}</span><span className="sv-act-s">{SUB[b.key]}</span>
+        </div>
+      ))}
     </div>
   );
 }

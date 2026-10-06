@@ -64,3 +64,12 @@ fightbanner 512x64, fuentes 256xN, hud/bars 256x32, fullBars 128x64, comboBars 6
   (movimiento: Stand 1/10/vel/fricción); Trigger +0x3c = trigger persistente.
 - Índices: 48 condiciones (`00415d30`) y 48 acciones (`00416720`), tablas en decode_builders.py.
 - Las condiciones delegan en `Fighter` (herencia múltiple: IConditionFighter / IActionFighter / IAIFighter).
+
+## Ronda 2 — motor jugable (2026-10-06)
+- `src/svnz/`: core (assets/audio/input), fight (fighter FSM+física+animación, fight/colisiones/oleadas, pad, data, ai
+  provisional), render (sprites FighterFactory, fuentes 8x8/8x16 desde '!', HUD), game (Logo→Menú→Pelea), táctil 6 botones.
+- Resolución lógica 480x272; proyección `sx=floor(x+.5)`, `sy=floor(z/2-y+.5)`; área x 0..480, z 60..220.
+- Datos del exe: gravedad -1200, fricción 1200, poder 0..300 (humano arranca en 250), spawn aleatorio con margen 1.2×collisionWidth.
+- Tooling de verificación contra el original: `research/drive.py` (lanza, enfoca, teclas por scancode, captura cliente) y `cap.py`.
+- Pendiente: IA real (Standar/BigDemon/Dracula decisions+reflexes), definiciones de golpe por enemigo, cámara, efectos,
+  pantalla de ayuda/transición, comparación cuadro a cuadro con el original.

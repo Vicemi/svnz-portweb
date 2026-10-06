@@ -1,38 +1,40 @@
-// Keyboard state with the same semantics as bat::Keyboard: isPressed (held) and isFirstPress (this frame).
-// Key bindings match ControllerHero / Helper in xa.exe (see MODLOG "Teclado").
+// Keyboard state with bat::Keyboard semantics: isDown (held) and isPressed (pressed this update).
+// Bindings follow the original readme: arrows move, Q fast, W strong, E jump, A special, S defense/parry, D dash,
+// ENTER help/confirm, ESC exit. Button indices are the game's UserPad order (svnz.exe 00419b40):
+//   0 jump, 1 fast attack, 2 strong attack, 3 dash, 4 special, 5 defense.
 
-export type Action = 'up' | 'down' | 'left' | 'right' | 'jumpHold' | 'jumpTap' | 'fire' | 'confirm' | 'back' | 'any';
+export type Key = 'up' | 'down' | 'left' | 'right' | 'b0' | 'b1' | 'b2' | 'b3' | 'b4' | 'b5' | 'enter' | 'esc';
 
-const BINDINGS: Record<Exclude<Action, 'any'>, string[]> = {
-  up: ['ArrowUp', 'Numpad8'],
-  down: ['ArrowDown', 'Numpad2'],
-  left: ['ArrowLeft', 'Numpad4'],
-  right: ['ArrowRight', 'Numpad6'],
-  jumpHold: ['KeyZ', 'Space'],          // pressedJump: held keys
-  jumpTap: ['Numpad1', 'Numpad7'],      // pressedJump: first-press keys
-  fire: ['KeyX', 'Numpad3', 'Numpad9'],
-  confirm: ['Enter', 'NumpadEnter'],
-  back: ['Escape'],
+const BINDINGS: Record<Key, string[]> = {
+  up: ['ArrowUp'],
+  down: ['ArrowDown'],
+  left: ['ArrowLeft'],
+  right: ['ArrowRight'],
+  b0: ['KeyE'],
+  b1: ['KeyQ'],
+  b2: ['KeyW'],
+  b3: ['KeyD'],
+  b4: ['KeyA'],
+  b5: ['KeyS'],
+  enter: ['Enter', 'NumpadEnter'],
+  esc: ['Escape'],
 };
 
 const down = new Set<string>();
+const tapped = new Set<string>();
 let prev = new Set<string>();
 let curr = new Set<string>();
-let anyPressedThisFrame = false;
 let anyQueued = false;
-// Keys pressed since the last poll. A tap shorter than one update (fast taps, slow frames, background tabs)
-// is still seen for exactly one update instead of being lost between two polls.
-const tapped = new Set<string>();
+let anyThisFrame = false;
 
 export function attachInput(target: Window = window): () => void {
   const kd = (e: KeyboardEvent) => {
     if (!down.has(e.code)) { anyQueued = true; tapped.add(e.code); }
     down.add(e.code);
-    if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
+    if (e.code.startsWith('Arrow') || e.code === 'Space' || e.code === 'Enter') e.preventDefault();
   };
   const ku = (e: KeyboardEvent) => {
     down.delete(e.code);
-    // a focused page button must not be "clicked" by the jump key when it is released
     if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   };
   const clear = () => down.clear();
@@ -51,8 +53,6 @@ export function attachInput(target: Window = window): () => void {
   };
 }
 
-/** Forget every key (level start, respawn): a key whose release was missed can't stay stuck "held", which would
- *  keep Xa ducking or swallow the next jump press. */
 export function resetInput(): void {
   down.clear();
   tapped.clear();
@@ -64,21 +64,18 @@ export function resetInput(): void {
 export function pollInput(): void {
   prev = curr;
   curr = new Set(down);
-  // a key that went down AND up since the last poll counts as held for this one update
-  for (const k of tapped) { curr.add(k); prev.delete(k); } // also a quick release+re-press = new press
+  for (const k of tapped) { curr.add(k); prev.delete(k); }
   tapped.clear();
-  anyPressedThisFrame = anyQueued;
+  anyThisFrame = anyQueued;
   anyQueued = false;
 }
 
-export function isPressed(a: Action): boolean {
-  if (a === 'any') return curr.size > 0;
-  return BINDINGS[a].some((k) => curr.has(k));
+export function isDown(k: Key): boolean {
+  return BINDINGS[k].some((c) => curr.has(c));
 }
-export function isFirstPress(a: Action): boolean {
-  if (a === 'any') return anyPressedThisFrame;
-  return BINDINGS[a].some((k) => curr.has(k) && !prev.has(k));
+export function isPressed(k: Key): boolean {
+  return BINDINGS[k].some((c) => curr.has(c) && !prev.has(c));
 }
-export function keyPressed(code: string): boolean {
-  return curr.has(code) && !prev.has(code);
+export function anyPressed(): boolean {
+  return anyThisFrame;
 }
