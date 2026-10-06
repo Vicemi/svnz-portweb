@@ -37,6 +37,8 @@ export type Rect = [number, number, number, number];
 export interface Frame { img: string; ox: number; oy: number; t: number; flip: string; body: Rect[]; hit: Rect[] }
 export interface Anim { loop: number; frames: Frame[] }
 export interface CharSprites {
+  /** Render scale of the pictures (XA bonus characters; rects are already scaled in the data). */
+  scale?: number;
   sheets: string[];
   images: Record<string, [number, number, number, number, number, number]>;
   anims: Record<string, Anim>;

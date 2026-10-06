@@ -1,6 +1,7 @@
 // characters.xml / waves.xml / menu.xml readers (FighterLoader 0041baa0, WavesManager).
 import { loadText } from '../core/assets';
 import type { CharDesc } from './types';
+import { registerBonus } from '../bonus/data';
 
 const DEFAULTS: Record<string, number> = { friction: 1200, gravity: -1200, reflexesFrequency: 4, walkSpeed: 0, strength: 1 };
 
@@ -108,6 +109,7 @@ export async function loadData(): Promise<void> {
   for (const el of Array.from(mx.querySelector('menuDefinition')?.children ?? [])) {
     DB.menus[el.tagName] = { cancel: el.getAttribute('cancel') ?? undefined, options: Array.from(el.children).map((o) => attrs(o) as unknown as MenuOption) };
   }
+  registerBonus();   // XA bosses mode: extra data on top of the original tables
 }
 
 /** Resolve a fighter of a list: nameIndex -1 = random name, color -1 = random palette; per-entry overrides. */

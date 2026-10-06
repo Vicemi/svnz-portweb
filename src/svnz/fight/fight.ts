@@ -1,6 +1,6 @@
 // Fight (svnz.exe Fight/FightersManager/CollisionsManager/WavesManager): fighters, hit detection, sparks,
 // slow motion, shakes and the wave flow of each game mode.
-import { Fighter, CHARS, type Spark, type Clone } from './fighter';
+import { Fighter, CHARS, FSM, type Spark, type Clone } from './fighter';
 import { DB, makeDesc, type FighterSpec, type LevelDef, type WaveDef } from './data';
 import { AIPad, UserPad } from './pad';
 import { AIController } from './ai';
@@ -11,11 +11,14 @@ export interface Area { x0: number; z0: number; w: number; d: number }
 /** FightingArea dojo/arena/practice (0041dd90): x 0..480, z 60..220; dungeon (0041de10) differs only in art. */
 export const AREA: Area = { x0: 0, z0: 60, w: 480, d: 160 };
 
+export interface Projectile { x: number; y: number; z: number; vx: number; vy: number; vz: number; hit: string; owner: Fighter; anim: number; t: number }
+
 export type Phase = 'intro' | 'ready' | 'fight' | 'cleared' | 'failed' | 'done';
 
 export class Fight {
   fighters: Fighter[] = [];
   sparks: Spark[] = [];
+  projectiles: Projectile[] = [];
   clones: (Clone & { char: string })[] = [];
   area = AREA;
   time = 0;
@@ -247,10 +250,10 @@ export class Fight {
   shakeWalls(amp: number, ticks: number): void { this.shake = { amp, t: ticks / 60 }; }
   slowMotion(rate: number, t: number): void { this.slow = { rate, t }; }
 
-  addSpark(id: number, x: number, y: number, z: number, facing: number): void {
-    const a = CHARS.Effects.anims[String(id)];
+  addSpark(id: number, x: number, y: number, z: number, facing: number, char = 'Effects'): void {
+    const a = CHARS[char].anims[String(id)];
     if (!a) return;
-    this.sparks.push({ anim: a, id, frame: 0, t: 0, x, y, z, facing, done: false });
+    this.sparks.push({ char, anim: a, id, frame: 0, t: 0, x, y, z, facing, done: false });
   }
 
   // ------------------------------------------------------------------ update
@@ -270,6 +273,7 @@ export class Fight {
       f.update(fdt);
     }
     this.collide();
+    this.updateProjectiles(fdt);
     for (const s of this.sparks) {
       s.t += fdt;
       while (!s.done && s.t >= s.anim.frames[s.frame].t / 60) {
@@ -287,6 +291,64 @@ export class Fight {
     for (const c of this.clones) c.life -= fdt;
     this.clones = this.clones.filter((c) => c.life > 0);
     this.fighters = this.fighters.filter((f) => !f.dead || this.players.includes(f));
+  }
+
+  // ------------------------------------------------------------------ projectiles (bonus characters)
+  /** One shot from `o`: starts `ox` in front and `oy` above its feet, `speed` px/s along its facing; with `aim` it also
+   *  drifts in depth (z) so it reaches the target's plane. */
+  shoot(o: Fighter, hit: string, anim: number, ox: number, oy: number, speed: number, aim: boolean, dy = 0): void {
+    const dir = o.facing;
+    const p: Projectile = { x: o.pos.x + dir * ox, y: o.pos.y + oy, z: o.pos.z, vx: dir * speed, vy: dy, vz: 0, hit, owner: o, anim, t: 0 };
+    const t = o.target;
+    if (aim && t && !t.dead) {
+      const T = Math.max(0.2, Math.abs(t.pos.x - p.x) / speed);
+      p.vz = Math.max(-140, Math.min(140, (t.pos.z - p.z) / T));
+    }
+    this.projectiles.push(p);
+  }
+  /** XA boss fan (EnemyBoss BOSS_BULLETS): 5 shots from 60 to 120 degrees, up to down, all leaning toward the target's depth. */
+  shootFan(o: Fighter, hit: string, anim: number, ox: number, oy: number, speed: number, n: number): void {
+    const dir = o.facing;
+    const t = o.target;
+    for (let k = 0; k < n; k++) {
+      const ang = Math.PI / 3 + k * (Math.PI / 12);
+      const p: Projectile = { x: o.pos.x + dir * ox, y: o.pos.y + oy, z: o.pos.z, vx: dir * Math.sin(ang) * speed, vy: Math.cos(ang) * speed, vz: 0, hit, owner: o, anim, t: 0 };
+      if (t && !t.dead) {
+        const T = Math.max(0.3, Math.abs(t.pos.x - p.x) / Math.max(40, Math.abs(p.vx)));
+        p.vz = Math.max(-120, Math.min(120, (t.pos.z - p.z) / T));
+      }
+      this.projectiles.push(p);
+    }
+  }
+  private updateProjectiles(dt: number): void {
+    const ar = this.area;
+    for (const p of this.projectiles) {
+      p.t += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.z += p.vz * dt;
+      let done = p.t > 5 || p.x < ar.x0 - 40 || p.x > ar.x0 + ar.w + 40 || p.y < 0 || p.z < ar.z0 - 10 || p.z > ar.z0 + ar.d + 10;
+      if (done && p.y < 0) { this.addSpark(10, p.x, 0, p.z, 1, 'XaFx'); }
+      if (!done) {
+        const sx = Math.floor(p.x + 0.5), sy = Math.floor(p.z * 0.5 - p.y + 0.5);
+        for (const v of this.enemiesOf(p.owner)) {
+          if (!v.canBeHit() || Math.abs(v.pos.z - p.z) >= 24) continue;
+          const hit = v.rects('body').some((r) => sx + 7 > r[0] && sx - 7 < r[0] + r[2] && sy + 7 > r[1] && sy - 7 < r[1] + r[3]);
+          if (!hit) continue;
+          const def = FSM.hits[p.hit];
+          if (def) {
+            const att = { facing: p.vx >= 0 ? 1 : -1, pos: { x: p.x, y: p.y, z: p.z }, team: p.owner.team, uid: -1 } as unknown as Fighter;
+            v.receiveHit(def, att);
+            this.addSpark(10, p.x, p.y, p.z, 1, 'XaFx');
+            playSound('xa_wall');
+          }
+          done = true;
+          break;
+        }
+      }
+      if (done) p.t = 99;
+    }
+    this.projectiles = this.projectiles.filter((p) => p.t < 90);
   }
 
   /** CollisionsManager (004368a0 / 00436970 / 00436ae0). */

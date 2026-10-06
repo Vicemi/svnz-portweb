@@ -141,13 +141,42 @@ export class SvnzGame {
     if (isPressed('down')) { this.sel = (this.sel + 1) % n; playSound('step'); }
     if (isPressed('up')) { this.sel = (this.sel + n - 1) % n; playSound('step'); }
     if (isPressed('esc') && m.cancel) { this.menu = 'firstMenu'; this.sel = 0; }
-    if (isPressed('enter') || isPressed('b1') || isPressed('b0')) {
-      const o = m.options[this.sel];
-      playSound('action');
-      if (o.link) { this.menu = o.link; this.sel = 0; }
-      else if (o.action === 'quitGame') { /* the web build has nowhere to quit to */ }
-      else if (o.action && DB.levels[o.action]) this.startLevel(o.action);
-    }
+    if (isPressed('enter') || isPressed('b1') || isPressed('b0')) this.activate();
+  }
+
+  /** Run the selected menu entry (keyboard confirm, mouse click or tap). */
+  private activate(): void {
+    const m = DB.menus[this.menu];
+    const o = m?.options[this.sel];
+    if (!o) return;
+    playSound('action');
+    if (o.link) { this.menu = o.link; this.sel = 0; }
+    else if (o.action === 'quitGame') { /* the web build has nowhere to quit to */ }
+    else if (o.action && DB.levels[o.action]) this.startLevel(o.action);
+  }
+
+  // Menu layout: compact, below the title picture (the original list overlapped the title letters); 7 entries fit.
+  private static readonly MENU_TOP = 104;   // below the title and the "Vicemi Mod" line of mainScreen.png
+  private static readonly MENU_STEP = 23;
+  private static readonly MENU_X = 112;
+
+  /** Mouse / touch on the canvas: hover moves the selection, a click or tap activates the entry under the pointer.
+   *  (A convenience of the web port: the original menu only takes the keyboard.) */
+  pointer(clientX: number, clientY: number, down: boolean): void {
+    if (this.screen !== 'menu') return;
+    const r = this.canvas.getBoundingClientRect();
+    const s = Math.min(r.width / W, r.height / H);
+    const lx = (clientX - r.left - (r.width - W * s) / 2) / s;
+    const ly = (clientY - r.top - (r.height - H * s) / 2) / s;
+    const m = DB.menus[this.menu];
+    if (!m) return;
+    const i = Math.floor((ly - SvnzGame.MENU_TOP) / SvnzGame.MENU_STEP);
+    const inside = i >= 0 && i < m.options.length && lx >= SvnzGame.MENU_X && lx < SvnzGame.MENU_X + 256 &&
+      ly - SvnzGame.MENU_TOP - i * SvnzGame.MENU_STEP < 22;
+    this.canvas.style.cursor = inside ? 'pointer' : 'default';
+    if (!inside) return;
+    if (this.sel !== i) { this.sel = i; if (!down) playSound('step'); }
+    if (down) this.activate();
   }
 
   private fightUpdate(dt: number): void {
@@ -204,15 +233,14 @@ export class SvnzGame {
     const sel = img('assets/images/hud/menu/selector.png');
     const m = DB.menus[this.menu];
     if (!m) return;
-    const top = 96;
     m.options.forEach((o, i) => {
-      const y = top + i * 30;
+      const y = SvnzGame.MENU_TOP + i * SvnzGame.MENU_STEP;
       if (sel) {
         g.globalAlpha = i === this.sel ? 1 : 0.6;
-        g.drawImage(sel, 0, i === this.sel ? 0 : 24, 256, 24, 112, y, 256, 24);
+        g.drawImage(sel, 0, i === this.sel ? 0 : 24, 256, 24, SvnzGame.MENU_X, y, 256, 22);
         g.globalAlpha = 1;
       }
-      drawText(g, i === this.sel ? 'smallOn' : 'smallOff', o.textKey, W / 2, y + 8, 'center');
+      drawText(g, i === this.sel ? 'smallOn' : 'smallOff', o.textKey, W / 2, y + 7, 'center');
     });
   }
 

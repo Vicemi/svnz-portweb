@@ -58,12 +58,13 @@ export function drawFrame(g: CanvasRenderingContext2D, char: string, sheet: numb
   const r = cs.images[fr.img];
   if (!im || !r) return;
   const [x, y, w, h, ax, ay] = r;
+  const sc = cs.scale ?? 1;
   const flip = (facing < 0) !== (fr.flip === 'H');
   g.save();
   if (alpha !== 1) g.globalAlpha = alpha;
   g.translate(Math.round(sx + facing * fr.ox), Math.round(sy + fr.oy));
   if (flip) g.scale(-1, 1);
-  g.drawImage(im, x, y, w, h, -ax, -ay, w, h);
+  g.drawImage(im, x, y, w, h, -ax * sc, -ay * sc, w * sc, h * sc);
   g.restore();
 }
 
@@ -96,7 +97,12 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
   }
   for (const s of fight.sparks) {
     const [sx, sy] = screenOf(s.x, s.y, s.z);
-    items.push({ z: s.z, draw: () => drawFrame(g, 'Effects', 0, s.anim.frames[s.frame], sx, sy, s.facing) });
+    items.push({ z: s.z, draw: () => drawFrame(g, s.char ?? 'Effects', 0, s.anim.frames[s.frame], sx, sy, s.facing) });
+  }
+  for (const p of fight.projectiles) {
+    const [sx, sy] = screenOf(p.x, p.y, p.z);
+    const fr = CHARS.XaFx.anims[String(p.anim)]?.frames[0];
+    if (fr) items.push({ z: p.z + 0.5, draw: () => drawFrame(g, 'XaFx', 0, fr, sx, sy, p.vx >= 0 ? 1 : -1) });
   }
   items.sort((a, b) => a.z - b.z);
   for (const it of items) it.draw();
