@@ -298,6 +298,7 @@ export class Fight {
    *  drifts in depth (z) so it reaches the target's plane. */
   shoot(o: Fighter, hit: string, anim: number, ox: number, oy: number, speed: number, aim: boolean, dy = 0): void {
     const dir = o.facing;
+    [ox, oy] = this.muzzle(o, ox, oy);
     const p: Projectile = { x: o.pos.x + dir * ox, y: o.pos.y + oy, z: o.pos.z, vx: dir * speed, vy: dy, vz: 0, hit, owner: o, anim, t: 0 };
     const t = o.target;
     if (aim && t && !t.dead) {
@@ -310,6 +311,7 @@ export class Fight {
   shootFan(o: Fighter, hit: string, anim: number, ox: number, oy: number, speed: number, n: number): void {
     const dir = o.facing;
     const t = o.target;
+    [ox, oy] = this.muzzle(o, ox, oy);
     for (let k = 0; k < n; k++) {
       const ang = Math.PI / 3 + k * (Math.PI / 12);
       const p: Projectile = { x: o.pos.x + dir * ox, y: o.pos.y + oy, z: o.pos.z, vx: dir * Math.sin(ang) * speed, vy: Math.cos(ang) * speed, vz: 0, hit, owner: o, anim, t: 0 };
@@ -319,6 +321,11 @@ export class Fight {
       }
       this.projectiles.push(p);
     }
+  }
+  /** Where the shot leaves: the weapon's muzzle of the picture on screen (frame.mz), else the offsets given. */
+  private muzzle(o: Fighter, ox: number, oy: number): [number, number] {
+    const mz = o.frame?.mz;
+    return mz ? [mz[0], -mz[1]] : [ox, oy];
   }
   private updateProjectiles(dt: number): void {
     const ar = this.area;
@@ -338,9 +345,10 @@ export class Fight {
           const def = FSM.hits[p.hit];
           if (def) {
             const att = { facing: p.vx >= 0 ? 1 : -1, pos: { x: p.x, y: p.y, z: p.z }, team: p.owner.team, uid: -1 } as unknown as Fighter;
-            v.receiveHit(def, att);
-            this.addSpark(10, p.x, p.y, p.z, 1, 'XaFx');
-            playSound('xa_wall');
+            if (!v.receiveHit(def, att)) {
+              this.addSpark(10, p.x, p.y, p.z, 1, 'XaFx');
+              playSound('xa_wall');
+            }
           }
           done = true;
           break;
@@ -371,9 +379,9 @@ export class Fight {
   private apply(att: Fighter, vic: Fighter, r: [number, number, number, number]): void {
     const h = att.hit!;
     att.hitVictims.add(vic.uid);
-    vic.receiveHit(h, att);
+    const blocked = vic.receiveHit(h, att);
     att.hitConnect(h, r, vic);
-    if (att === this.players[0] && vic.team !== att.team) {
+    if (att === this.players[0] && vic.team !== att.team && !blocked) {
       this.target = vic;
       const c = this.combo;
       c.hits++;

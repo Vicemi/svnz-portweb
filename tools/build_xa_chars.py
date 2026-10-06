@@ -33,6 +33,15 @@ def cell(m, i):
     return [x + (i % cols) * w, y + (i // cols) * h, w, h, ax, ay]
 
 
+# muzzle of the cannon / gun per picture (XA px from the anchor, measured on the sheets: research/muzzle.py)
+MUZZLE = {
+    ('HERO', 19): (26, -17), ('HERO', 20): (23, -17), ('HERO', 28): (21, -26),
+    ('HERO', 29): (27, -17), ('HERO', 30): (27, -18), ('HERO', 31): (28, -15), ('HERO', 32): (26, -14), ('HERO', 33): (28, -16),
+    ('HERO', 34): (27, -17), ('HERO', 35): (27, -20), ('HERO', 36): (26, -18), ('HERO', 37): (27, -15),
+    ('BOSS', 3): (36, -66), ('BOSS', 4): (36, -66),
+}
+
+
 def build(name, scale, maps, anims, body, hit_rule=None):
     sheets = sorted({SHEET[MAPS[m]['path']] for m in maps})
     images, out = {}, {}
@@ -49,6 +58,8 @@ def build(name, scale, maps, anims, body, hit_rule=None):
                   'body': [body], 'hit': []}
             if hit_rule and hit_rule(aid):
                 fr['hit'] = [body]
+            if (f['map'], f['i']) in MUZZLE:
+                fr['mz'] = list(MUZZLE[(f['map'], f['i'])])
             frames.append(fr)
         out[str(aid)] = {'loop': (0 if a['loop'] else -1) if loop_override is None else loop_override, 'frames': frames}
     s = {'sheets': [sheets[0]] if len(sheets) == 1 else sheets, 'images': images, 'anims': out, 'scale': scale}
@@ -62,6 +73,8 @@ def scaled(c, k):
         fr['body'] = [[round(v * k) for v in r] for r in fr['body']]
         fr['hit'] = [[round(v * k) for v in r] for r in fr['hit']]
         fr['oy'] = round(fr['oy'] * k)
+        if 'mz' in fr:
+            fr['mz'] = [round(v * k) for v in fr['mz']]
     return c
 
 
@@ -72,7 +85,7 @@ def main():
     lie = one([{'map': 'HERO', 'i': 27, 'd': 30}], 0)
     hero_anims = {
         0: ('STAND', None), 10: ('WALK', None), 20: ('JUMP', None), 30: ('SHOT_STAND', -1),
-        40: ('SHOT_RUN', None),
+        40: ('SHOT_RUN', None), 50: ('BLOCK_IN', None), 60: ('BLOCK_OUT', None),
         5000: (flinch, None), 5010: (flinch, None), 5015: (flinch, None), 5020: (flinch, None), 5030: (flinch, None),
         5040: (flinch, None), 5050: (flinch, None), 5055: (flinch, None), 5060: (flinch, None), 5070: (flinch, None),
         5100: (flinch, None), 5110: (lie, None), 5120: (lie, None), 5130: (lie, None), 5140: (lie, None),
@@ -96,9 +109,9 @@ def main():
     fx_anims = {
         1: ({'loop': 1, 'base': 60, 'frames': [{'map': 'BLAST_ENEMY', 'i': 0, 'd': 6}]}, None),
         2: ({'loop': 1, 'base': 60, 'frames': [{'map': 'BLAST_HERO', 'i': 0, 'd': 6}]}, None),
-        10: ('HERO_DEATH', None),
+        10: ('HERO_DEATH', None), 20: ('SHIELD', None), 21: ('SHIELD_GREEN', None),
     }
-    fx = build('XaFx', 1.0, ['BLAST_ENEMY', 'BLAST_HERO', 'HERO_DEATH'], fx_anims, [-8, -8, 8, 8])
+    fx = build('XaFx', 1.0, ['BLAST_ENEMY', 'BLAST_HERO', 'HERO_DEATH', 'SHIELD'], fx_anims, [-8, -8, 8, 8])
     for f in [fr for a in fx['anims'].values() for fr in a['frames']]:
         f['body'] = []
     out = {'XaHero': scaled(hero, 1.0), 'XaBoss': scaled(boss, 0.62), 'XaFx': fx}

@@ -119,6 +119,12 @@ export class Fighter {
   freeze = false;                      // +0x2f4
   armor = false;                       // +0x2f5 (state)
   armorMode = false;                   // characters.xml armorMode
+  // XA shield (bonus characters): while `guard` is up frontal weak hits are blocked; each block loads `guardHits`
+  // (it drains over time) and the 4th one breaks the guard through.
+  guard = false;
+  guardHits = 0;
+  blockedNow = false;                  // the hit being resolved was blocked
+  hidden = false;                      // not drawn (XA hero after its explosion)
   invincible = false;                  // +0x2f7 (state)
   invTimed = false;                    // +0x2f8
   invTime = 0;                         // +0x2fc
@@ -220,6 +226,7 @@ export class Fighter {
     this.hitConnected = false;
     this.freeze = false;
     this.armor = false;
+    this.guard = false;
     this.hitContactNow = false;
     this.stateTime = 0;
     this.prevStateTime = 0;
@@ -268,6 +275,7 @@ export class Fighter {
 
   // ---------------------------------------------------------------- update (Fighter::v3 @ 0040b160)
   update(dt: number): void {
+    if (this.guardHits > 0) this.guardHits = Math.max(0, this.guardHits - dt * 0.4);
     // FUN_0040b230: pause -> affect -> displacement timers
     let d = dt;
     if (this.pause > 0) {
@@ -504,6 +512,14 @@ export class Fighter {
       case 'SetMemoState': if (this.memo) this.memoGo = true; break;
       case 'SetPauseTime': this.pause = i[0] * TICK; break;
       case 'SetArmorMode': this.armor = true; break;
+      // bonus characters (XA): shield up, effect at the body (i=[anim, forward, height, jitter]), vanish
+      case 'GuardOn': this.guard = true; break;
+      case 'XaSpark': {
+        const j = i[3] ?? 0;
+        this.fight.addSpark(i[0], this.pos.x + this.facing * i[1] + (Math.random() * 2 - 1) * j, this.pos.y + i[2] + (Math.random() * 2 - 1) * j * 0.6, this.pos.z + 1, this.facing, 'XaFx');
+        break;
+      }
+      case 'Hide': this.hidden = true; break;
       case 'SetSpecialDamage':
         if (s[0]) this.special = { on: true, state: s[0], pause: i[0] * TICK, spark: i[1], flag: !!b[0] };
         else this.special.on = false;
@@ -613,7 +629,22 @@ export class Fighter {
   }
 
   /** Fighter::v9 (0040c4f0): this fighter receives `h` from `att`. */
-  receiveHit(h: HitDef, att: Fighter): void {
+  receiveHit(h: HitDef, att: Fighter): boolean {
+    this.blockedNow = false;
+    // XA shield: weak hits from the front are stopped (the hit still pauses both); strong ones and the 4th block pass
+    if (this.guard && !this.special.on && h.fallType <= 1 && att.facing !== this.facing) {
+      this.guardHits++;
+      if (this.guardHits < 4) {
+        this.blockedNow = true;
+        this.pause = h.pauseV * TICK;
+        this.vel.x = att.facing * 70;
+        playSound(this.guardHits % 2 ? 'xa_shield' : 'xa_shield2');
+        this.fight.addSpark(20, this.pos.x + this.facing * 12, this.pos.y + 26, this.pos.z + 1, this.facing, 'XaFx');
+        return true;
+      }
+      this.guard = false;
+      this.guardHits = 0;
+    }
     this.recv = h;
     this.lastAttacker = att;
     this.recvAttackerX = att.pos.x;
@@ -665,6 +696,7 @@ export class Fighter {
     this.pause = h.pauseV * TICK;
     this.affect = h.affect * TICK;
     if (h.sound) playSound(h.sound);
+    return false;
   }
 
   /** Fighter::v10 (0040c8b0): our hit `h` connected on `vic` at rect `r` (intersection, screen space). */
@@ -676,6 +708,7 @@ export class Fighter {
     this.addPower(h.powerA);
     let spark = h.spark;
     if (vic.special.on && vic.special.spark !== -1) spark = vic.special.spark;
+    if (vic.blockedNow) spark = -1;   // the shield effect replaces the hit spark
     if (spark >= 0) {
       // random point of the intersection rect, drawn in front of both fighters
       const sx = r[0] + Math.random() * r[2];
