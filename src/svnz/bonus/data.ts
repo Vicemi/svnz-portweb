@@ -5,7 +5,7 @@
 // XA mechanics kept:
 //   boss  - walks, cannon fan of 5 shots (60..120 degrees, 200 px/s) with the "gun" pose, armoured (halved damage, never
 //           staggers), explosion + shake when it dies. Touching it does NOT hurt (Mina is mostly melee).
-// Power-up: a ninja star on the map gives Mina 20 s of ranged stars (special button), thrown with a reused slash animation.
+// Power-up: a ninja star on the map gives Mina 20 s of ranged stars (W / Q attack keys), thrown with Mina's own fast-attack animation.
 //   hero  - walks, jumps and DOUBLE jumps, fires the energy ball, flinches/falls/gets up when hit, and has the SHIELD
 //           (BLOCK_IN/OUT): raised toward the target it stops weak frontal hits (4th one in a row breaks it); strong hits pass.
 // Shots leave from the weapon's muzzle of the current picture (frame.mz, measured on the XA sheets).
@@ -123,26 +123,25 @@ export function registerBonus(): void {
   FSM.controls.XaBoss_Control = [{ state: 'Attack', conds: [c('IsPressed', true, { i: [1] }), c('IsStateGround')] }];
 
   // ------------------------------------------------------------------ ninja stars (Mina)
-  // anim 7000 = FastAttack's wind-up without the slash arc: arm out (frame 1, hand muzzle) and back
+  // anim 7000 = FastAttack's own animation (1000): the arm swings out at frame 2 - the star leaves the hand there (frame.mz)
   const fa = CHARS.Mina.anims['1000'].frames;
-  const hand: [number, number] = [22, -14];
+  const hand: [number, number] = [32, -21];
   CHARS.Mina.anims['7000'] = {
     loop: -1,
-    frames: [
-      { ...fa[0], hit: [], t: 3 }, { ...fa[1], hit: [], t: 5, mz: hand }, { ...fa[1], hit: [], t: 4, mz: hand }, { ...fa[6], hit: [], t: 3 },
-    ],
+    frames: fa.map((fr, k) => ({ ...fr, hit: [], ...(k === 2 || k === 3 ? { mz: hand } : {}) })),
   };
   FSM.states.Mina_StarThrow = state({
     anim: 7000, faceStick: true, control: 4, type: 1, phys: 0,
     entry: [a('VelSet', { f: [0, 0, 0] })],
     triggers: [
-      trig([c('AnimFrameNumArrived', true, { i: [1] })], [a('ThrowStar', { s: ['NinjaStar'] }), a('PlayGeneralSound', { s: ['weakSlash'] })]),
+      trig([c('AnimFrameNumArrived', true, { i: [2] })], [a('ThrowStar', { s: ['NinjaStar'] }), a('PlayGeneralSound', { s: ['weakSlash'] })]),
       trig([c('AnimEnd')], [a('ChangeState', { s: ['Stand'] })]),
     ],
   });
   FSM.dicts.Mina_FighterStates.map.StarThrow = 'Mina_StarThrow';
   if (!FSM.controls.Mina_Control.some((t) => t.state === 'StarThrow')) {
-    FSM.controls.Mina_Control.unshift({ state: 'StarThrow', conds: [c('HasStars'), c('IsPressed', true, { i: [4] }), c('IsStateGround')] });
+    // while the power-up lasts both attack keys throw: W (button 2) and Q (button 1)
+    for (const b of [2, 1]) FSM.controls.Mina_Control.unshift({ state: 'StarThrow', conds: [c('HasStars'), c('IsPressed', true, { i: [b] }), c('IsStateGround')] });
   }
 
   // ------------------------------------------------------------------ AI (SVNZ plane: x, depth z)

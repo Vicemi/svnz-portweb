@@ -152,3 +152,7 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
   crece en 0.15 s, gira en vuelo, se inclina en z hacia el enemigo más cercano del frente; daño 10 (jefe: mitad por armadura), suma combo.
 - Sprites 8-bit: `tools/build_star.py` rasteriza `tools/star-source.svg` (SVG Repo), máscara de 1 bit, aplanada a 16x16 / 22x22 con paleta
   fija (contorno oscuro + 3 tonos, luz arriba-izquierda), 4 cuadros de giro -> `public/assets/bonus/star.png`, `data/star.json`.
+
+## Ronda 10 — lanzamiento con W/Q (2026-10-06)
+- Mientras dura el poder, W (botón 2) y Q (botón 1) lanzan la estrella en la dirección en que mira Mina (control `StarThrow` por delante
+  de los ataques). Animación = la de FastAttack (1000) completa, sin hits; la estrella sale de la mano al llegar al frame 2 (mz = 32,-21).
