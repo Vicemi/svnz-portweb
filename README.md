@@ -4,6 +4,10 @@
 
 ---
 
+🎮 **Jugalo online:** [svnz-portweb.vicemi.dev](https://svnz-portweb.vicemi.dev). No hay que instalar nada: anda en PC y en el celular, y se actualiza con cada cambio que llega a `main`.
+
+---
+
 ## 📖 Sobre el proyecto
 
 Super Vampire Ninja Zero es un beat 'em up 2.5D donde controlás a **Mina**, una experta en artes marciales con algo de demonio/no-muerto, contra oleadas de ninjas, murciélagos, demonios gigantes y hasta **Drácula**. El juego original es un prototipo de 2009 que quedó abandonado, y este proyecto nace para **revivirlo** y poder jugarlo en cualquier dispositivo, sin instalar nada.
@@ -107,6 +111,10 @@ npm run build
 ```
 
 Los archivos se generan en `./dist/`, listos para subir a cualquier hosting estático (Cloudflare Pages, Vercel, Netlify, GitHub Pages…). Para previsualizarla: `npm run preview`.
+
+### 🌐 Deploy y flujo de ramas
+
+La versión pública vivirá en **[svnz-portweb.vicemi.dev](https://svnz-portweb.vicemi.dev)** (hosting estático, build con `npm run build` y carpeta `dist`). El desarrollo sigue este flujo: se crea una rama `feature/...` desde `develop`, se integra en `develop`, luego `develop` se integra en `main` y las ramas feature se borran. Así `main` y `develop` quedan siempre iguales y estables.
 
 ### 🧞 Comandos disponibles
 

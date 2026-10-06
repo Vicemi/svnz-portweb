@@ -322,7 +322,8 @@ export class Fighter {
     const t = this.target && !this.target.dead ? this.target : null;
     if (t && t.pos.x !== this.pos.x) this.facing = t.pos.x > this.pos.x ? 1 : -1;
     else this.facing = sx > 0 ? 1 : -1;
-    const sp = this.desc.walkSpeed;
+    // Fighter::v36 (004099e0): the state's own speed (+0x48) unless its +0x4c flag says to use the character's walkSpeed
+    const sp = st.f4c !== 0 ? this.desc.walkSpeed : st.f48;
     this.vel.x = sp * sx;          // FUN_00410190: facing * (walkSpeed * stickX * facing)
     this.vel.z = sp * sy;
     if (!this.walking) {
@@ -367,7 +368,7 @@ export class Fighter {
     }
     // area limits (x by collision width, z by the fighting area)
     const ar = this.fight.area;
-    const half = this.desc.collisionWidth;
+    const half = this.radius;
     let x = this.pos.x;
     if (x < oldX || this.vel.x < 0 || this.desc.collisionWidth > 0) {
       if (x - half < ar.x0 && this.vel.x <= 0 && oldX >= x) x = Math.min(oldX, ar.x0 + half);
@@ -484,7 +485,7 @@ export class Fighter {
 
   private collideWithWall(): boolean {
     const ar = this.fight.area;
-    const half = this.desc.collisionWidth;
+    const half = this.radius;
     return (this.vel.x < 0 && this.pos.x - half <= ar.x0 + 0.01) || (this.vel.x > 0 && this.pos.x + half >= ar.x0 + ar.w - 0.01);
   }
 
@@ -693,6 +694,9 @@ export class Fighter {
       return [sx + x1 + this.facing * f.ox, sy + r[1] + f.oy, x2 - x1, r[3] - r[1]] as [number, number, number, number];
     });
   }
+
+  /** Fighter +0x1cc: half the xml collisionWidth (the loader multiplies by 0.5, 0040a5c4). */
+  get radius(): number { return this.desc.collisionWidth * 0.5; }
 
   zDistanceOk(o: Fighter): boolean { return Math.abs(this.pos.z - o.pos.z) < Z_HIT_RANGE; }
 }

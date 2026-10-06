@@ -110,3 +110,12 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
 - Responsivo táctil: tamaños con clamp() según el alto de pantalla (botones, stick, márgenes con safe-area), botón de pantalla
   completa (⛶, arriba a la izquierda; Fullscreen API + bloqueo a horizontal si existe) y F4 en teclado como el original.
 - README al estilo del de XA. Publicado en https://github.com/Vicemi/svnz-portweb (ramas develop y main).
+
+## Ronda 6 — calibración de la IA contra el original (2026-10-06)
+- Medición en el original (Mina quieta 30 s, vida del HUD en píxeles): ~31 de vida perdida (5 golpes de 6); el DemonNinja
+  también rodea y ataca con las garras extendidas a ~45 px sin tocar a Mina durante largos períodos, es decir, el original
+  también "golpea al aire" en el borde del alcance (disparo a close+radio = 46 px, alcance real del tajo ~41 px).
+- Mi simulación de 10 pruebas de 30 s: 2-10 ataques, vida perdida 0-42 (media 22): agresividad comparable.
+- Bug corregido: radio del luchador = collisionWidth*0.5 (0040a5c4), no el ancho completo (los enemigos atacaban demasiado lejos).
+- Bug corregido: velocidad al caminar = f48 del estado salvo que f4c != 0 (entonces walkSpeed del personaje) (Fighter::v36 004099e0);
+  el murciélago (walkSpeed DEFAULT=0 en el xml, f48=150 en Bat_Fly) se quedaba inmóvil.
