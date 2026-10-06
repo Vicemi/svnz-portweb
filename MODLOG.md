@@ -156,3 +156,8 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
 ## Ronda 10 — lanzamiento con W/Q (2026-10-06)
 - Mientras dura el poder, W (botón 2) y Q (botón 1) lanzan la estrella en la dirección en que mira Mina (control `StarThrow` por delante
   de los ataques). Animación = la de FastAttack (1000) completa, sin hits; la estrella sale de la mano al llegar al frame 2 (mz = 32,-21).
+
+## Ronda 11 — enemigos que caían al terminar la fase (2026-10-06)
+- Bug: en BossMode los extras seguían apareciendo (1 por segundo) mientras el jefe moría (life 0 pero aún sin `dead`), y al pasar a
+  `cleared` se les mataba nada más caer, con el cartel de la fase siguiente en pantalla. Ahora un jefe con life 0 cierra la oleada
+  (`clear()`) y no entra ningún luchador nuevo; en TimeMode tampoco se genera uno en el mismo tick en que se acaba el tiempo.
