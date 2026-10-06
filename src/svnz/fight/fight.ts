@@ -11,7 +11,9 @@ export interface Area { x0: number; z0: number; w: number; d: number }
 /** FightingArea dojo/arena/practice (0041dd90): x 0..480, z 60..220; dungeon (0041de10) differs only in art. */
 export const AREA: Area = { x0: 0, z0: 60, w: 480, d: 160 };
 
-export interface Projectile { x: number; y: number; z: number; vx: number; vy: number; vz: number; hit: string; owner: Fighter; anim: number; t: number }
+export interface Projectile { x: number; y: number; z: number; vx: number; vy: number; vz: number; hit: string; owner: Fighter; anim: number; t: number; char?: string }
+/** Power-up lying on the map (bonus levels): the ninja star. */
+export interface Item { x: number; z: number; t: number }
 
 export type Phase = 'intro' | 'ready' | 'fight' | 'cleared' | 'failed' | 'done';
 
@@ -19,6 +21,8 @@ export class Fight {
   fighters: Fighter[] = [];
   sparks: Spark[] = [];
   projectiles: Projectile[] = [];
+  items: Item[] = [];
+  private itemTimer = 4;
   clones: (Clone & { char: string })[] = [];
   area = AREA;
   time = 0;
@@ -274,6 +278,7 @@ export class Fight {
     }
     this.collide();
     this.updateProjectiles(fdt);
+    this.updateItems(fdt);
     for (const s of this.sparks) {
       s.t += fdt;
       while (!s.done && s.t >= s.anim.frames[s.frame].t / 60) {
@@ -296,7 +301,7 @@ export class Fight {
   // ------------------------------------------------------------------ projectiles (bonus characters)
   /** One shot from `o`: starts `ox` in front and `oy` above its feet, `speed` px/s along its facing; with `aim` it also
    *  drifts in depth (z) so it reaches the target's plane. */
-  shoot(o: Fighter, hit: string, anim: number, ox: number, oy: number, speed: number, aim: boolean, dy = 0): void {
+  shoot(o: Fighter, hit: string, anim: number, ox: number, oy: number, speed: number, aim: boolean, dy = 0): Projectile {
     const dir = o.facing;
     [ox, oy] = this.muzzle(o, ox, oy);
     const p: Projectile = { x: o.pos.x + dir * ox, y: o.pos.y + oy, z: o.pos.z, vx: dir * speed, vy: dy, vz: 0, hit, owner: o, anim, t: 0 };
@@ -306,6 +311,41 @@ export class Fight {
       p.vz = Math.max(-140, Math.min(140, (t.pos.z - p.z) / T));
     }
     this.projectiles.push(p);
+    return p;
+  }
+  /** Mina's ninja star: leaves her hand (frame muzzle), flies along her facing and leans toward the nearest enemy in front. */
+  throwStar(o: Fighter, hit: string): void {
+    const front = this.enemiesOf(o).filter((e) => !e.dead && (e.pos.x - o.pos.x) * o.facing > 0);
+    const t = front.sort((a, b) => Math.abs(a.pos.x - o.pos.x) - Math.abs(b.pos.x - o.pos.x))[0];
+    const prev = o.target;
+    o.target = t ?? null;
+    const p = this.shoot(o, hit, 1, 22, 26, 380, !!t);
+    o.target = prev;
+    p.char = 'NinjaStar';
+  }
+  private updateItems(dt: number): void {
+    if (this.levelKey !== 'bonusXaLevel' || this.phase !== 'fight') return;
+    const p = this.players[0];
+    if (!p || p.dead) return;
+    for (const it of this.items) it.t -= dt;
+    this.items = this.items.filter((it) => it.t > 0);
+    for (const it of this.items) {
+      if (Math.abs(it.x - p.pos.x) < 24 + p.radius && Math.abs(it.z - p.pos.z) < 20) {
+        it.t = 0;
+        p.stars = 20;
+        playSound('special');
+        this.addSpark(0, it.x, 10, it.z + 1, 1);
+      }
+    }
+    this.items = this.items.filter((it) => it.t > 0);
+    if (this.items.length === 0 && p.stars <= 0) {
+      this.itemTimer -= dt;
+      if (this.itemTimer <= 0) {
+        const q = this.randomPos(p);
+        this.items.push({ x: q.x, z: q.z, t: 14 });
+        this.itemTimer = 10;
+      }
+    }
   }
   /** XA boss fan (EnemyBoss BOSS_BULLETS): 5 shots from 60 to 120 degrees, up to down, all leaning toward the target's depth. */
   shootFan(o: Fighter, hit: string, anim: number, ox: number, oy: number, speed: number, n: number): void {
@@ -346,8 +386,9 @@ export class Fight {
           if (def) {
             const att = { facing: p.vx >= 0 ? 1 : -1, pos: { x: p.x, y: p.y, z: p.z }, team: p.owner.team, uid: -1 } as unknown as Fighter;
             if (!v.receiveHit(def, att)) {
-              this.addSpark(10, p.x, p.y, p.z, 1, 'XaFx');
-              playSound('xa_wall');
+              if (p.char) this.addSpark(def.spark, p.x, p.y, p.z + 1, att.facing);
+              else { this.addSpark(10, p.x, p.y, p.z, 1, 'XaFx'); playSound('xa_wall'); }
+              if (p.owner === this.players[0]) this.comboHit(v);
             }
           }
           done = true;
@@ -381,13 +422,14 @@ export class Fight {
     att.hitVictims.add(vic.uid);
     const blocked = vic.receiveHit(h, att);
     att.hitConnect(h, r, vic);
-    if (att === this.players[0] && vic.team !== att.team && !blocked) {
-      this.target = vic;
-      const c = this.combo;
-      c.hits++;
-      c.window = c.hits === 1 ? 1 : 1 + 1.2 * Math.min(1, c.hits / 20);
-      c.left = c.window;
-    }
+    if (att === this.players[0] && vic.team !== att.team && !blocked) this.comboHit(vic);
+  }
+  private comboHit(vic: Fighter): void {
+    this.target = vic;
+    const c = this.combo;
+    c.hits++;
+    c.window = c.hits === 1 ? 1 : 1 + 1.2 * Math.min(1, c.hits / 20);
+    c.left = c.window;
   }
   /** Does `a`'s current hit reach `b`? Returns the intersection rect. */
   private check(a: Fighter, b: Fighter): [number, number, number, number] | null {

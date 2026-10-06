@@ -52,13 +52,13 @@ export function drawText(g: CanvasRenderingContext2D, font: FontName, s: string,
 }
 
 /** Draw one FighterFactory frame with its axis at screen (sx, sy). */
-export function drawFrame(g: CanvasRenderingContext2D, char: string, sheet: number, fr: Frame, sx: number, sy: number, facing: number, alpha = 1): void {
+export function drawFrame(g: CanvasRenderingContext2D, char: string, sheet: number, fr: Frame, sx: number, sy: number, facing: number, alpha = 1, k = 1): void {
   const cs = CHARS[char];
   const im = img(cs.sheets[sheet] ?? cs.sheets[0]);
   const r = cs.images[fr.img];
   if (!im || !r) return;
   const [x, y, w, h, ax, ay] = r;
-  const sc = cs.scale ?? 1;
+  const sc = (cs.scale ?? 1) * k;
   const flip = (facing < 0) !== (fr.flip === 'H');
   g.save();
   if (alpha !== 1) g.globalAlpha = alpha;
@@ -101,8 +101,27 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
   }
   for (const p of fight.projectiles) {
     const [sx, sy] = screenOf(p.x, p.y, p.z);
-    const fr = CHARS.XaFx.anims[String(p.anim)]?.frames[0];
-    if (fr) items.push({ z: p.z + 0.5, draw: () => drawFrame(g, 'XaFx', 0, fr, sx, sy, p.vx >= 0 ? 1 : -1) });
+    const ch = p.char ?? 'XaFx';
+    const an = CHARS[ch].anims[String(p.anim)];
+    // the ninja star spins and grows from a small one while it leaves the hand
+    const fr = p.char ? an?.frames[Math.floor(p.t * 20) % an.frames.length] : an?.frames[0];
+    const k = p.char ? 0.5 + 0.5 * Math.min(1, p.t / 0.15) : 1;
+    if (fr) items.push({ z: p.z + 0.5, draw: () => drawFrame(g, ch, 0, fr, sx, sy, p.vx >= 0 ? 1 : -1, 1, k) });
+  }
+  // power-up on the map: gold star bobbing over a shadow; blinks when about to vanish
+  for (const it of fight.items) {
+    const an = CHARS.NinjaStar.anims['2'];
+    const fr = an.frames[Math.floor(fight.time * 12) % an.frames.length];
+    const bob = Math.round(Math.sin(fight.time * 5) * 2);
+    const [sx, sy] = screenOf(it.x, 12 + bob, it.z);
+    const [shx, shy] = screenOf(it.x, 0, it.z);
+    if (it.t > 3 || Math.floor(fight.time * 8) % 2 === 0) {
+      items.push({ z: it.z, draw: () => {
+        g.fillStyle = 'rgba(0,0,0,0.35)';
+        g.fillRect(shx - 6, shy - 1, 12, 3);
+        drawFrame(g, 'NinjaStar', 0, fr, sx, sy, 1);
+      } });
+    }
   }
   items.sort((a, b) => a.z - b.z);
   for (const it of items) it.draw();
@@ -164,6 +183,15 @@ export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
     g.drawImage(full, 0, 16, ow, oh, 49, 35, ow, oh);
   }
   if (p.power >= 300 && fx && Math.floor(fight.time * 6) % 2 === 0) g.drawImage(fx, 8, 12, 88, 20, 18, 24, 88, 20);
+  if (p.stars > 0) {
+    // ninja-star power-up: icon + remaining time under the power bar
+    const an = CHARS.NinjaStar.anims['1'];
+    drawFrame(g, 'NinjaStar', 0, an.frames[Math.floor(fight.time * 12) % an.frames.length], 118, 36, 1);
+    g.fillStyle = '#140c20';
+    g.fillRect(128, 32, 42, 8);
+    g.fillStyle = '#f8c028';
+    g.fillRect(129, 33, Math.round(40 * Math.min(1, p.stars / 20)), 6);
+  }
   drawText(g, 'small', p.name, 32, 4);
   drawText(g, 'small', 'Press ENTER for Help', 200, 6);
   drawText(g, 'smallOn', `Record: ${fight.record}`, 452, 11, 'right');

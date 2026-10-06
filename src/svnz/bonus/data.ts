@@ -3,15 +3,16 @@
 // character descriptors, waves and menu entries. The original SVNZ game data is not touched.
 //
 // XA mechanics kept:
-//   boss  - walks, cannon fan of 5 shots (60..120 degrees, 200 px/s) with the "gun" pose, killed by 200 hits (life 220 here,
-//           armoured so a hit never staggers it), touching it hurts, explosion + shake when it dies.
+//   boss  - walks, cannon fan of 5 shots (60..120 degrees, 200 px/s) with the "gun" pose, armoured (halved damage, never
+//           staggers), explosion + shake when it dies. Touching it does NOT hurt (Mina is mostly melee).
+// Power-up: a ninja star on the map gives Mina 20 s of ranged stars (special button), thrown with a reused slash animation.
 //   hero  - walks, jumps and DOUBLE jumps, fires the energy ball, flinches/falls/gets up when hit, and has the SHIELD
 //           (BLOCK_IN/OUT): raised toward the target it stops weak frontal hits (4th one in a row breaks it); strong hits pass.
 // Shots leave from the weapon's muzzle of the current picture (frame.mz, measured on the XA sheets).
 // Deaths: boss = BOSS_DEAD + chained explosions + shake; hero = HERO_DEATH explosion after the hit pose, then it vanishes.
 // New for SVNZ: both move on the 2.5D plane (stalk, keep distance, approach, wait) with their own AI tables and their shots
 // drift in depth to reach the target's plane. Sounds are XA's own (assets/xa/fx); music stays SVNZ's.
-import { FSM } from '../fight/fighter';
+import { FSM, CHARS } from '../fight/fighter';
 import { registerAI, type AIPart } from '../fight/ai';
 import { DB } from '../fight/data';
 import type { Cond, FState, HitDef } from '../fight/types';
@@ -28,10 +29,9 @@ export const BONUS_LEVEL = 'bonusXaLevel';
 export function registerBonus(): void {
   // ------------------------------------------------------------------ hits
   const weak = FSM.hits.Common_WeakHit;
-  const strong = FSM.hits.Common_StrongHit;
   FSM.hits.XaBall = { ...weak, damage: 7, pauseA: 0, pauseV: 4, affect: 12, sound: 'xa_hurt', spark: 60, vx: 90, avx: 90, avy: 120, powerA: 0 } as HitDef;
   FSM.hits.XaBullet = { ...weak, damage: 8, pauseA: 0, pauseV: 4, affect: 10, sound: 'xa_hurt', spark: 60, vx: 80, avx: 80, avy: 100, powerA: 0 } as HitDef;
-  FSM.hits.XaBossTouch = { ...strong, damage: 14, pauseA: 3, pauseV: 8, affect: 22, sound: 'xa_hurt', vx: 220, vy: 160, avx: 220, avy: 200, fallType: 2, spark: 20 } as HitDef;
+  FSM.hits.NinjaStar = { ...weak, damage: 10, pauseA: 0, pauseV: 3, affect: 14, vx: 70, avx: 70, avy: 140, powerA: 0, powerV: 1 } as HitDef;
 
   // ------------------------------------------------------------------ XA hero
   FSM.states.XaHero_Intro1 = state({ anim: 20, phys: 1, control: 1, triggers: [trig([c('HasFallen')], [a('PlayGeneralSound', { s: ['xa_entrance'] }), a('ChangeState', { s: ['Stand'] })])] });
@@ -93,9 +93,6 @@ export function registerBonus(): void {
   FSM.states.XaBoss_Intro1 = state({ anim: 0, phys: 1, control: 1, triggers: [trig([c('HasFallen')], [a('ShakeGround', { i: [4, 24] }), a('ChangeState', { s: ['Stand'] })])] });
   FSM.states.XaBoss_Stand = state({
     anim: 0, move: true, walkAnim: 10, f4c: 1, control: 0, type: 0, phys: 0,
-    // touching the boss hurts (XA: contact = death): re-arm the contact hit every walk cycle
-    entry: [a('HitPerform', { s: ['XaBossTouch'] })],
-    triggers: [trig([c('AnimFrameNumArrived', true, { i: [0] })], [a('HitPerform', { s: ['XaBossTouch'] })], true)],
   });
   FSM.states.XaBoss_Shoot = state({
     anim: 20, faceStick: true, control: 4, type: 1, phys: 0,
@@ -124,6 +121,29 @@ export function registerBonus(): void {
     map: { ...human, Intro1: 'XaBoss_Intro1', Stand: 'XaBoss_Stand', Attack: 'XaBoss_Shoot', Dead: 'XaBoss_Dead' },
   };
   FSM.controls.XaBoss_Control = [{ state: 'Attack', conds: [c('IsPressed', true, { i: [1] }), c('IsStateGround')] }];
+
+  // ------------------------------------------------------------------ ninja stars (Mina)
+  // anim 7000 = FastAttack's wind-up without the slash arc: arm out (frame 1, hand muzzle) and back
+  const fa = CHARS.Mina.anims['1000'].frames;
+  const hand: [number, number] = [22, -14];
+  CHARS.Mina.anims['7000'] = {
+    loop: -1,
+    frames: [
+      { ...fa[0], hit: [], t: 3 }, { ...fa[1], hit: [], t: 5, mz: hand }, { ...fa[1], hit: [], t: 4, mz: hand }, { ...fa[6], hit: [], t: 3 },
+    ],
+  };
+  FSM.states.Mina_StarThrow = state({
+    anim: 7000, faceStick: true, control: 4, type: 1, phys: 0,
+    entry: [a('VelSet', { f: [0, 0, 0] })],
+    triggers: [
+      trig([c('AnimFrameNumArrived', true, { i: [1] })], [a('ThrowStar', { s: ['NinjaStar'] }), a('PlayGeneralSound', { s: ['weakSlash'] })]),
+      trig([c('AnimEnd')], [a('ChangeState', { s: ['Stand'] })]),
+    ],
+  });
+  FSM.dicts.Mina_FighterStates.map.StarThrow = 'Mina_StarThrow';
+  if (!FSM.controls.Mina_Control.some((t) => t.state === 'StarThrow')) {
+    FSM.controls.Mina_Control.unshift({ state: 'StarThrow', conds: [c('HasStars'), c('IsPressed', true, { i: [4] }), c('IsStateGround')] });
+  }
 
   // ------------------------------------------------------------------ AI (SVNZ plane: x, depth z)
   const P = (sit: string, w: number, buckets: [number, string, number[]?][], params: ['s', string][] = []): AIPart => ({

@@ -99,8 +99,8 @@ def main():
         0: (one([{'map': 'BOSS', 'i': 0, 'd': 4}], 0, 30), None), 10: ('BOSS', None), 20: ('BOSS_SHOOT', None),
         5500: ({'loop': 0, 'base': dead['base'], 'frames': [dict(f, oy=-86) for f in dead['frames']]}, None),
     }
-    boss = build('XaBoss', 0.62, ['BOSS', 'BOSS_DEAD'], boss_anims, [-56, -172, 56, 0],
-                 hit_rule=lambda aid: aid == 10)
+    # no contact damage (the SVNZ fighter is mostly melee: touching the boss must not hurt)
+    boss = build('XaBoss', 0.62, ['BOSS', 'BOSS_DEAD'], boss_anims, [-56, -172, 56, 0])
     # the boss and its explosion share jefe_tile.png; BOSS_DEAD frames use their own anchor
     fx_maps = {'BLAST_ENEMY': {'path': 'assets/images/elements/planilla_blasts_xa_512x512_24bits.png', 'type': 3, 'anchor': [30, 33], 'rect': [420, 0, 60, 60]},
                'BLAST_HERO': {'path': 'assets/images/elements/planilla_blasts_xa_512x512_24bits.png', 'type': 3, 'anchor': [30, 33], 'rect': [420, 60, 60, 60]}}
