@@ -5,7 +5,10 @@
 // XA mechanics kept:
 //   boss  - walks, cannon fan of 5 shots (60..120 degrees, 200 px/s) with the "gun" pose, killed by 200 hits (life 220 here,
 //           armoured so a hit never staggers it), touching it hurts, explosion + shake when it dies.
-//   hero  - walks, jumps and DOUBLE jumps, fires the energy ball, flinches/falls/gets up when hit.
+//   hero  - walks, jumps and DOUBLE jumps, fires the energy ball, flinches/falls/gets up when hit, and has the SHIELD
+//           (BLOCK_IN/OUT): raised toward the target it stops weak frontal hits (4th one in a row breaks it); strong hits pass.
+// Shots leave from the weapon's muzzle of the current picture (frame.mz, measured on the XA sheets).
+// Deaths: boss = BOSS_DEAD + chained explosions + shake; hero = HERO_DEATH explosion after the hit pose, then it vanishes.
 // New for SVNZ: both move on the 2.5D plane (stalk, keep distance, approach, wait) with their own AI tables and their shots
 // drift in depth to reach the target's plane. Sounds are XA's own (assets/xa/fx); music stays SVNZ's.
 import { FSM } from '../fight/fighter';
@@ -53,15 +56,37 @@ export function registerBonus(): void {
       trig([c('AnimEnd')], [a('ChangeState', { s: ['Stand'] })]),
     ],
   });
+  // shield: BLOCK_IN (frames 22..25), guard up from the first tick, held at least .45 s (button) and at most 1.1 s, then BLOCK_OUT
+  FSM.states.XaHero_Block = state({
+    anim: 50, faceStick: true, control: 4, type: 1, phys: 0,
+    entry: [a('VelSetZ', { f: [0] }), a('GuardOn'), a('PlayGeneralSound', { s: ['xa_shield'] })],
+    triggers: [
+      trig([c('StateTimeLarger', true, { f: [0.45] }), c('IsDown', false, { i: [2] })], [a('ChangeState', { s: ['Unblock'] })]),
+      trig([c('StateTimeLarger', true, { f: [1.1] })], [a('ChangeState', { s: ['Unblock'] })]),
+    ],
+  });
+  FSM.states.XaHero_Unblock = state({ anim: 60, control: 2, type: 1, phys: 0, triggers: [trig([c('AnimEnd')], [a('ChangeState', { s: ['Stand'] })])] });
+  // death: the hit pose, then the XA player-death explosion (HERO_DEATH) and the body is gone
+  FSM.states.XaHero_Dead = state({
+    anim: 5500, control: 1, type: 3, phys: 0,
+    entry: [a('FreezePhysics'), a('ShakeGround', { i: [3, 30] })],
+    triggers: [
+      trig([c('StateTimeArrived', true, { f: [0.12] })], [a('PlayGeneralSound', { s: ['xa_hero_death'] }), a('XaSpark', { i: [10, 0, 26, 0] }), a('DramaticSlowMotion', { f: [0.5, 0.5] })]),
+      trig([c('StateTimeArrived', true, { f: [0.2] })], [a('Hide'), a('XaSpark', { i: [10, 0, 34, 14] })]),
+      trig([c('StateTimeArrived', true, { f: [0.5] })], [a('XaSpark', { i: [10, 0, 20, 18] })]),
+      trig([c('StateTimeLarger', true, { f: [1.5] })], [a('Death')]),
+    ],
+  });
   const human = FSM.dicts.Human_FighterStates.map;
   FSM.dicts.XaHero_FighterStates = {
     base: 'Human_FighterStates',
-    map: { ...human, Intro1: 'XaHero_Intro1', Jump: 'XaHero_Jump', DoubleJump: 'XaHero_DoubleJump', Attack: 'XaHero_Shoot' },
+    map: { ...human, Intro1: 'XaHero_Intro1', Jump: 'XaHero_Jump', DoubleJump: 'XaHero_DoubleJump', Attack: 'XaHero_Shoot', Block: 'XaHero_Block', Unblock: 'XaHero_Unblock', Dead: 'XaHero_Dead' },
   };
   FSM.controls.XaHero_Control = [
     { state: 'Jump', conds: [c('IsPressed', true, { i: [0] }), c('IsStateGround')] },
     { state: 'DoubleJump', conds: [c('IsPressed', true, { i: [0] }), c('IsStateAir'), c('StateEquals', true, { s: ['Jump'] })] },
     { state: 'Attack', conds: [c('IsPressed', true, { i: [1] }), c('IsStateGround')] },
+    { state: 'Block', conds: [c('IsPressed', true, { i: [2] }), c('IsStateGround')] },
   ];
 
   // ------------------------------------------------------------------ XA boss
@@ -87,7 +112,12 @@ export function registerBonus(): void {
   FSM.states.XaBoss_Dead = state({
     anim: 5500, control: 1, type: 3, phys: 0,
     entry: [a('FreezePhysics'), a('PlayGeneralSound', { s: ['xa_death'] }), a('ShakeGround', { i: [6, 120] }), a('DramaticSlowMotion', { f: [0.6, 0.4] })],
-    triggers: [trig([c('StateTimeLarger', true, { f: [4] })], [a('Death')])],   // the explosion keeps popping for ~4 s
+    // BOSS_DEAD plays its own explosion; chained blasts over the body (XA: ENEMY_DEATH bursts) and a last one at the end
+    triggers: [
+      ...[0.3, 0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1].map((t, k) =>
+        trig([c('StateTimeArrived', true, { f: [t] })], [a('XaSpark', { i: [k % 2 ? 10 : 1, (k % 3 - 1) * 20, 55, 40] }), ...(k % 2 ? [a('PlayGeneralSound', { s: ['xa_cannon'] })] : [])])),
+      trig([c('StateTimeLarger', true, { f: [4] })], [a('Death')]),   // the explosion keeps popping for ~4 s
+    ],
   });
   FSM.dicts.XaBoss_FighterStates = {
     base: 'Human_FighterStates',
@@ -100,22 +130,33 @@ export function registerBonus(): void {
     sit, w, params, buckets: buckets.map(([bw, r, ip]) => ({ w: bw, r, params: (ip ?? []).map((n) => ['i', n] as ['i', number]) })),
   });
   const FIND = P('Default', 0, [[1, 'Wait', [10]], [1, 'RandomWalk'], [13, 'FindClosestTarget']]);
+  // Boss: a slow turret. Lines up in depth with the target (the fan only reaches its plane), keeps its distance, fires at once
+  // when the target is on top of it or in the air, otherwise from range.
   registerAI('XaBoss_Decisions_AI', [
-    P('HasTarget', 20, [[40, 'StalkTarget'], [20, 'MidToTarget'], [25, 'LongToTarget'], [15, 'Wait', [45]], [10, 'StayAway']]),
+    P('TargetOffDepth', 10, [[60, 'AlignDepth'], [20, 'StayAway'], [10, 'Wait', [20]]]),
+    P('HasTarget', 20, [[20, 'StalkTarget'], [20, 'MidToTarget'], [25, 'LongToTarget'], [15, 'Wait', [45]], [10, 'StayAway'], [15, 'AlignDepth']]),
     FIND,
   ]);
   registerAI('XaBoss_Reflexes_AI', [
-    P('LongToTarget', 220, [[40, 'PressButtonAimingToTarget', [1]]]),
+    P('CloseToTarget', 40, [[45, 'PressButtonAimingToTarget', [1]], [20, 'StayAway']]),
+    P('TargetAirborne', 60, [[40, 'PressButtonAimingToTarget', [1]]]),
+    P('LongToTarget', 120, [[70, 'PressButtonAimingToTarget', [1]]]),
   ]);
+  // Hero: keeps the shield for what the target does (attack in range, target on top of it, hurt), shoots from range,
+  // double-jumps away from trouble and lines up in depth to shoot.
   registerAI('XaHero_Decisions_AI', [
-    P('HasTarget', 20, [[30, 'StalkTarget'], [25, 'MidToTarget'], [15, 'LongToTarget'], [15, 'Wait', [30]], [25, 'StayAway'], [10, 'CloseToTarget']]),
+    P('LowLife', 20, [[40, 'StayAway'], [30, 'LongToTarget'], [20, 'Wait', [25]]]),
+    P('TargetOffDepth', 10, [[40, 'AlignDepth'], [20, 'StalkTarget'], [10, 'Wait', [15]]]),
+    P('HasTarget', 20, [[25, 'StalkTarget'], [25, 'MidToTarget'], [15, 'LongToTarget'], [15, 'Wait', [30]], [25, 'StayAway'], [8, 'CloseToTarget']]),
     FIND,
   ]);
   registerAI('XaHero_Reflexes_AI', [
+    P('TargetAttacking', 12, [[55, 'PressButtonAimingToTarget', [2]], [25, 'JumpAway', [0]], [15, 'PressButtonAimingToTarget', [1]]]),
     P('StateEquals', 60, [[25, 'PressButton', [0]]], [['s', 'Jump']]),                 // second jump in the air
-    P('CloseToTarget', 60, [[25, 'PressButton', [0]], [20, 'StayAway'], [25, 'PressButtonAimingToTarget', [1]]]),
-    P('MidToTarget', 40, [[40, 'PressButtonAimingToTarget', [1]], [12, 'PressButton', [0]]]),
-    P('LongToTarget', 60, [[25, 'PressButtonAimingToTarget', [1]], [8, 'PressButton', [0]]]),
+    P('TargetAirborne', 45, [[30, 'PressButtonAimingToTarget', [2]], [15, 'JumpAway', [0]]]),
+    P('CloseToTarget', 45, [[22, 'PressButtonAimingToTarget', [2]], [18, 'JumpAway', [0]], [18, 'StayAway'], [30, 'PressButtonAimingToTarget', [1]]]),
+    P('MidToTarget', 35, [[45, 'PressButtonAimingToTarget', [1]], [10, 'PressButton', [0]], [8, 'PressButtonAimingToTarget', [2]]]),
+    P('LongToTarget', 55, [[30, 'PressButtonAimingToTarget', [1]], [8, 'PressButton', [0]]]),
   ]);
 
   // ------------------------------------------------------------------ characters
@@ -126,14 +167,14 @@ export function registerBonus(): void {
   DB.chars.XaBoss = {
     base: {
       ...base, key: 'XaBoss', alias: 'XA Boss', dataKey: 'XaBoss', statesDictionary: 'XaBoss_FighterStates', controlTriggersHuman: 'XaBoss_Control', controlTriggersCPU: 'XaBoss_Control',
-      decisionsAI: 'XaBoss_Decisions_AI', reflexesAI: 'XaBoss_Reflexes_AI', reflexesFrequency: 20, collisionWidth: 64, armorMode: true, lifeCPU: 220,
+      decisionsAI: 'XaBoss_Decisions_AI', reflexesAI: 'XaBoss_Reflexes_AI', reflexesFrequency: 15, collisionWidth: 64, armorMode: true, lifeCPU: 220,
       closeAttackDist: 60, midAttackDist: 150, longAttackDist: 270, walkSpeed: 45,
     }, names: [], generic: [],
   };
   DB.chars.XaHero = {
     base: {
       ...base, key: 'XaHero', alias: 'XA', dataKey: 'XaHero', statesDictionary: 'XaHero_FighterStates', controlTriggersHuman: 'XaHero_Control', controlTriggersCPU: 'XaHero_Control',
-      decisionsAI: 'XaHero_Decisions_AI', reflexesAI: 'XaHero_Reflexes_AI', reflexesFrequency: 12, collisionWidth: 24, armorMode: false, lifeCPU: 300,
+      decisionsAI: 'XaHero_Decisions_AI', reflexesAI: 'XaHero_Reflexes_AI', reflexesFrequency: 7, collisionWidth: 24, armorMode: false, lifeCPU: 300,
       closeAttackDist: 60, midAttackDist: 140, longAttackDist: 240, walkSpeed: 100,
     }, names: [], generic: [],
   };

@@ -120,6 +120,13 @@ export class AIController {
       case 'AboveToTarget': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) < ABOVE_X;
       case 'TargetIsFallingClose': return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) < ABOVE_X && t!.pos.y !== 0;
       // an enemy that has ME inside ITS attack range (closeAttackDist + my radius uses the enemy's numbers)
+      // bonus characters (XA): react to what the target is doing
+      case 'TargetAttacking':
+        return tOk && dzOk(t!) && Math.abs(t!.pos.x - f.pos.x) <= mid + t!.radius && (t!.isAttacking() || t!.state?.type === 1);
+      case 'TargetBehind': return tOk && ((t!.pos.x - f.pos.x) * f.facing < 0);
+      case 'LowLife': return f.life < f.lifeMax * 0.35;
+      case 'TargetOffDepth': return tOk && Math.abs(t!.pos.z - f.pos.z) >= Z_RANGE;
+      case 'TargetAirborne': return tOk && dzOk(t!) && t!.pos.y > AIR_Y / 2 && Math.abs(t!.pos.x - f.pos.x) <= mid + t!.radius;
       case 'IsCloseToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.closeAttackDist + e.radius);
       case 'MidToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.midAttackDist + e.radius);
       case 'LongToEnemy': return fight.enemiesOf(f).some((e) => dzOk(e) && Math.abs(e.pos.x - f.pos.x) <= e.desc.longAttackDist + e.radius);
@@ -148,6 +155,17 @@ export class AIController {
       case 'FindStrongTarget': f.target = fight.strongEnemy(f); break;
       case 'FindWeakTarget': f.target = fight.weakEnemy(f); break;
       case 'PressButton': this.pad.tap(iparam); break;
+      // bonus characters (XA): line up in depth with the target keeping my x; jump/dash away from it
+      case 'AlignDepth': if (f.target) this.goto({ x: f.pos.x, z: f.target.pos.z }); break;
+      case 'JumpAway': {
+        const t = f.target;
+        this.mode = 5;
+        this.wait = 0.35;
+        this.pad.x = t && t.pos.x > f.pos.x ? -1 : 1;
+        this.pad.y = 0;
+        this.pad.tap(iparam);
+        break;
+      }
       case 'PressButtonAimingToTarget': this.aimPress(iparam); break;
     }
   }
@@ -157,7 +175,7 @@ export class AIController {
   private finished(b: Bucket): boolean {
     switch (b.r) {
       case 'Wait': case 'CloseToTarget': case 'MidToTarget': case 'LongToTarget': return this.mode === 0;
-      case 'AboveToTarget': case 'RandomWalk': case 'StalkTarget': case 'StayAway': {
+      case 'AboveToTarget': case 'RandomWalk': case 'StalkTarget': case 'StayAway': case 'AlignDepth': {
         const v = this.f.vel;
         return v.x === 0 && v.y === 0 && v.z === 0;
       }
