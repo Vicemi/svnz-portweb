@@ -17,6 +17,8 @@ export default function SvnzGameView() {
   const [panel, setPanel] = useState<PanelKind | null>(null);
   const [roomCode, setRoomCode] = useState('');
   const [online, setOnline] = useState(false);
+  const [char, setChar] = useState('Mina');
+  const [star, setStar] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const canFull = typeof document !== 'undefined' && !!document.fullscreenEnabled;
 
@@ -53,7 +55,11 @@ export default function SvnzGameView() {
   }, []);
 
   useEffect(() => {
-    const id = window.setInterval(() => { setScreen(gameRef.current?.currentScreen ?? ''); setOnline(gameRef.current?.online ?? false); }, 120);
+    const id = window.setInterval(() => { setScreen(gameRef.current?.currentScreen ?? ''); setOnline(gameRef.current?.online ?? false);
+      // the touch buttons follow the character being played (and the star power-up)
+      const me = gameRef.current?.fight?.local;
+      if (me) { setChar(me.desc.key); setStar(me.stars > 0); }
+    }, 120);
     return () => window.clearInterval(id);
   }, []);
 
@@ -96,7 +102,7 @@ export default function SvnzGameView() {
       {isTouch && portrait && (
         <div className="sv-rotate"><div className="sv-rotate-inner"><span className="sv-rotate-icon">🔄</span><span>Girá el celular para jugar</span></div></div>
       )}
-      <TouchControls active={isTouch && !portrait && screen === 'play'} />
+      <TouchControls active={isTouch && !portrait && screen === 'play'} char={char} star={star} />
       {isTouch && !portrait && canFull && (
         <button className="sv-top-btn sv-full-btn" aria-label="Pantalla completa" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFull(); }}>{full ? '✕' : '⛶'}</button>
       )}

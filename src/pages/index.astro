@@ -36,16 +36,8 @@ import SvnzGameView from '../components/SvnzGame.tsx';
   .sv-act { position: absolute; pointer-events: none; border-radius: 50%; width: var(--b); height: var(--b); display: flex; flex-direction: column; align-items: center; justify-content: center;
     border: 2px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.95); text-shadow: 0 1px 2px rgba(0,0,0,0.8); transition: transform 60ms, background 60ms; }
   .sv-act.is-down { background: rgba(255,255,255,0.4); transform: scale(0.93); }
-  .sv-act-k { font: bold clamp(0.8rem, 3.6vh, 1.1rem) system-ui, sans-serif; line-height: 1; }
-  .sv-act-s { font: 600 clamp(0.42rem, 1.7vh, 0.58rem) system-ui, sans-serif; opacity: 0.85; }
-  /* right cluster, keyboard shape: bottom row Q W E, upper row A S D */
-  .sv-b-fast, .sv-b-special { right: calc(var(--m) + (var(--b) + var(--g)) * 2 + env(safe-area-inset-right)); }
-  .sv-b-strong, .sv-b-defense { right: calc(var(--m) + (var(--b) + var(--g)) + env(safe-area-inset-right)); }
-  .sv-b-jump, .sv-b-dash { right: calc(var(--m) + env(safe-area-inset-right)); }
-  .sv-b-fast, .sv-b-strong, .sv-b-jump { bottom: calc(var(--m) + env(safe-area-inset-bottom)); }
-  .sv-b-special, .sv-b-defense, .sv-b-dash { bottom: calc(var(--m) + var(--b) + var(--g) + env(safe-area-inset-bottom)); }
-  .sv-b-fast { border-color: rgba(255,210,120,0.8); } .sv-b-strong { border-color: rgba(255,120,120,0.8); } .sv-b-jump { border-color: rgba(140,220,255,0.8); }
-  .sv-b-special { border-color: rgba(220,140,255,0.8); } .sv-b-defense { border-color: rgba(160,255,160,0.8); } .sv-b-dash { border-color: rgba(255,255,160,0.8); }
+  .sv-act-k { font: bold clamp(0.5rem, 2.5vh, 0.78rem) system-ui, sans-serif; line-height: 1.1; text-align: center; padding: 0 0.15rem; }
+  .sv-act-s { font: 700 clamp(0.45rem, 1.8vh, 0.62rem) system-ui, sans-serif; opacity: 0.7; }
   /* always-visible buttons: back and help top right, fullscreen top left */
   .sv-top-btn { position: fixed; z-index: 8; top: calc(0.5rem + env(safe-area-inset-top)); right: calc(0.6rem + env(safe-area-inset-right)); width: clamp(2.4rem, 10vh, 3rem); height: clamp(2.4rem, 10vh, 3rem); border-radius: 50%;
     display: flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.6); background: rgba(0,0,0,0.35); color: #fff; font: bold 1.1rem system-ui; padding: 0;
@@ -127,4 +119,32 @@ import SvnzGameView from '../components/SvnzGame.tsx';
   .ol-item:disabled { cursor: default; }
   .ol-ico { display: inline-block; background-image: url('/assets/bonus/powerups.png'); image-rendering: pixelated; background-repeat: no-repeat; flex: none; }
   @media (max-width: 40rem) { .ol-two { grid-template-columns: 1fr; } .ol-card { padding: 0.8rem; } .ol-code { font-size: 20px; } }
+
+  /* the buttons of the character, packed toward the bottom-right corner (first = the main one under the thumb) */
+  .sv-slot-0, .sv-slot-2 { right: calc(var(--m) + env(safe-area-inset-right)); }
+  .sv-slot-1, .sv-slot-3 { right: calc(var(--m) + (var(--b) + var(--g)) + env(safe-area-inset-right)); }
+  .sv-slot-4, .sv-slot-5 { right: calc(var(--m) + (var(--b) + var(--g)) * 2 + env(safe-area-inset-right)); }
+  .sv-slot-0, .sv-slot-1, .sv-slot-4 { bottom: calc(var(--m) + env(safe-area-inset-bottom)); }
+  .sv-slot-2, .sv-slot-3, .sv-slot-5 { bottom: calc(var(--m) + var(--b) + var(--g) + env(safe-area-inset-bottom)); }
+
+  /* thin scrollbars in the game's colors (lobby, selector, level of detail panels) */
+  .ol-overlay, .ol-card, .ol-info, .ol-keys, .ol-setup pre { scrollbar-width: thin; scrollbar-color: #3a63ff #05071a; }
+  .ol-overlay::-webkit-scrollbar, .ol-card::-webkit-scrollbar, .ol-info::-webkit-scrollbar, .ol-setup pre::-webkit-scrollbar { width: 5px; height: 5px; }
+  .ol-overlay::-webkit-scrollbar-track, .ol-card::-webkit-scrollbar-track, .ol-info::-webkit-scrollbar-track, .ol-setup pre::-webkit-scrollbar-track { background: #05071a; }
+  .ol-overlay::-webkit-scrollbar-thumb, .ol-card::-webkit-scrollbar-thumb, .ol-info::-webkit-scrollbar-thumb, .ol-setup pre::-webkit-scrollbar-thumb { background: linear-gradient(#b8601c, #7a3410); border: 1px solid #f0b030; border-radius: 0; }
+  .ol-overlay::-webkit-scrollbar-thumb:hover, .ol-card::-webkit-scrollbar-thumb:hover { background: linear-gradient(#e08a30, #a85414); }
+  .ol-overlay::-webkit-scrollbar-corner { background: #05071a; }
+
+  /* phones and tablets: no double-tap zoom on the panels, inputs big enough that iOS does not zoom the page, bigger targets */
+  .ol-overlay { touch-action: pan-y; -webkit-tap-highlight-color: transparent; overscroll-behavior: contain; }
+  @media (pointer: coarse) {
+    .ol-field input { font-size: 16px; padding: 0.7rem; }
+    .ol-btn { min-height: 44px; }
+    .ol-btn.small { min-height: 38px; min-width: 38px; }
+    .ol-char { min-height: 76px; }
+    .ol-var { min-width: 52px; min-height: 52px; }
+    .ol-item { min-height: 52px; }
+    .ol-kick { padding: 0.5rem 0.7rem; font-size: 12px; }
+    .ol-switch input { width: 22px; height: 22px; }
+  }
 </style>

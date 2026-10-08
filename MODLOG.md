@@ -208,3 +208,11 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
 - **Verificado** en el navegador integrado con el backend real y 4 pestañas (anfitrión + 3 invitados, uno con viewport móvil `?touch=1`): colores únicos,
   partida de 4, proyectil visible en el invitado, temporizadores, corte de socket del anfitrión y del invitado móvil (reconexión automática y la partida sigue),
   recarga del anfitrión en plena partida (vuelven todos al lobby), recarga del invitado. No probado: teléfono físico, cuatro navegadores distintos, red móvil real.
+
+## Ronda 14 — móvil y barras de desplazamiento (2026-10-08)
+- Botones táctiles por personaje (`online/controls.ts`, decodificado de `fsm.json` controls): solo se muestran los que usa el personaje, con su acción
+  (Mina 6; BigDemon Q+E; Dracula Q+W+A; XaHero Q+E+W; los demás Q) y, con la estrella, un botón extra en A. Se colocan desde la esquina inferior derecha
+  (`.sv-slot-N`). `SvnzGame.tsx` sigue a `fight.local` (personaje y `stars`).
+- Paneles: barras de desplazamiento finas (5 px) con el marrón/dorado del juego; en `pointer: coarse` campos a 16 px (iOS no hace zoom), objetivos >= 44 px y
+  aviso de que el coop local necesita teclado. Probado con viewport 812x375 (peleas con BigDemon y Mina) y 375x812 (lobby).
+

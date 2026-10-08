@@ -115,6 +115,8 @@ Los controles de pelea son los mismos (el jugador 1 / quien juega online). En el
 
 ### Celular / táctil
 
+> **Botones por personaje:** en el celular solo aparecen los botones que usa *tu* personaje, con lo que hace cada uno (Mina: rápido, fuerte, salto, dash, especial y defensa; Big Demon: ataque y body slam; Drácula: ataque, patada y veloz; XA Hero: disparo, salto y escudo; el resto: ataque). Con el power-up de la **estrella** se suma un botón «Estrella». El botón principal queda bajo el pulgar, en la esquina inferior derecha. El coop local (jugador 2 en el mismo teclado) necesita teclado: en el celular usá las salas online.
+
 Girá el teléfono en **horizontal**.
 
 - **Izquierda:** joystick flotante de 8 direcciones (el juego es 2.5D: también se camina hacia el fondo de la pantalla).
