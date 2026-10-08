@@ -221,3 +221,7 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
 - Causa del congelamiento: host e invitado con versiones distintas del juego (pestana con el JS viejo tras un deploy): `Mirror.apply` lanzaba una excepcion en cada snapshot tras avanzar `lastSeq`, asi que todos los siguientes fallaban. Ahora los snapshots llevan `v` (`NET_VERSION`), una version distinta muestra un aviso, un snapshot fallido no avanza `lastSeq` y tras ~3 s de fallos se sale con un mensaje.
 - El rele del servidor se midio por Cloudflare (600/600 y 3600/3600 snapshots, sin cierres en 145 s).
 - Fuego amigo: `BigDemon_Punch/BodySlam/BodySlamIntro` tienen target 33 (golpean a todos). En coop no dañan a los jugadores del mismo equipo (los enemigos conservan el comportamiento original).
+
+## Ronda 16 — conexiones medio muertas (2026-10-08)
+- `NetClient`: si pasan 7 s sin pong (un proxy dejo la conexion colgada sin avisar, en cualquier sentido) se abre un socket nuevo con la misma sesion (`forceReconnect`). El invitado hace lo mismo si deja de recibir snapshots 3 s con el socket "abierto" (`watchAt`, cada 8 s como maximo). Probado cortando `onmessage` del socket de un invitado contra el backend de produccion: se recupero en ~3 s.
+- Servidor: con el mismo codigo y nombre, en plena partida, un jugador toma su asiento aunque la conexion vieja siga abierta (la vieja se reemplaza); antes solo valia con asientos caidos.
