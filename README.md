@@ -67,6 +67,8 @@ Cómo se juega:
 - **Controles del jugador 2 (coop local):** **I J K L** mover · **U** ataque rápido · **O** ataque fuerte · **P** salto · **N** especial · **M** defensa · **,** dash. El jugador 1 usa los controles de siempre.
 - En una partida online, **Esc dos veces** sale: si sos invitado dejás la sala; si sos el anfitrión terminás la partida y todos vuelven al lobby.
 
+> **Retraso (ping):** arriba, en la pelea online, se ve `Ping 38ms P2P` o `Ping 190ms RELAY`. Al empezar la partida los navegadores se conectan **directamente entre sí** (WebRTC) para que los invitados jueguen casi tan rápido como el anfitrión; si no se puede, usan el relé del servidor, que añade el viaje hasta el servidor (con el servidor lejos, cientos de ms). Con enlace directo el anfitrión manda 60 imágenes por segundo en vez de 30. Para redes estrictas se puede añadir un servidor TURN en el backend (ver su README).
+
 > La pelea online corre en el navegador del **anfitrión** (el que crea la sala): tiene que mantener la pestaña visible. Los invitados juegan con la latencia hacia el anfitrión (el lobby muestra el *ping*).
 
 #### Montar tu propio backend

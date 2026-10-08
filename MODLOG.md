@@ -225,3 +225,9 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
 ## Ronda 16 — conexiones medio muertas (2026-10-08)
 - `NetClient`: si pasan 7 s sin pong (un proxy dejo la conexion colgada sin avisar, en cualquier sentido) se abre un socket nuevo con la misma sesion (`forceReconnect`). El invitado hace lo mismo si deja de recibir snapshots 3 s con el socket "abierto" (`watchAt`, cada 8 s como maximo). Probado cortando `onmessage` del socket de un invitado contra el backend de produccion: se recupero en ~3 s.
 - Servidor: con el mismo codigo y nombre, en plena partida, un jugador toma su asiento aunque la conexion vieja siga abierta (la vieja se reemplaza); antes solo valia con asientos caidos.
+
+## Ronda 17 — retraso de los invitados: enlace directo P2P (2026-10-08)
+- Medicion: el servidor esta en Kansas City y el RTT desde los jugadores es ~190 ms; el camino invitado -> servidor -> anfitrión -> servidor -> invitado suma ~380 ms. El anfitrión no lo sufre porque simula en local.
+- `online/p2p.ts`: WebRTC con dos canales de datos por invitado (`snap` sin orden ni reintentos, `in` fiable y ordenado). El servidor solo reenvía la señalización (`rtc`). Con todos los enlaces abiertos el anfitrión manda un snapshot por tick (60/s) directo; si no, 30/s por el relé (y directo a quien pueda). Los controles del invitado van directos y, si no hay enlace, por el relé. Ping: el invitado mide su RTT con `ping/pong` por el canal; el anfitrión muestra el peor. HUD: `Ping Nms P2P|RELAY` en lugar de "Press ENTER for Help" online.
+- `Mirror.interval` se mide (media móvil de la llegada de snapshots) en vez de fijo 1/30.
+- Probado: enlace directo abierto entre dos pestañas (60 snapshots/s, interval 16,8 ms, movimiento por el canal), y con el enlace cortado el juego sigue por el relé. No probado: redes reales con NAT estricto (necesitan TURN), telefonos.
