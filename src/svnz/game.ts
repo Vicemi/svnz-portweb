@@ -3,11 +3,46 @@ import { attachInput, isPressed, pollInput, resetInput, anyPressed } from './cor
 import { useBundledAssets, useDevGameFiles, img } from './core/assets';
 import { playMusic, preloadSounds, stopMusic, unlockAudio, playSound } from './core/audio';
 import { loadData, DB } from './fight/data';
-import { Fight } from './fight/fight';
+import { Fight, VS_LEVEL, type PlayerSlot } from './fight/fight';
+import { PadSampler, keyboard } from './fight/pad';
 import { H, W, drawBanner, drawFight, drawHud, drawText, preloadGraphics } from './render';
+import { setSoundTap } from './core/audio';
+import { NetClient, type RoomView } from './online/net';
+import { Mirror, makeSnap, type Snap } from './online/sync';
+import { difficultyOf, type Difficulty } from './online/scaling';
 
 type Screen = 'loading' | 'logo' | 'vicemi' | 'menu' | 'fight' | 'error';
 const STEP = 1 / 60;
+
+/** What the page (React) gets told when a VS / co-op match ends. */
+export interface MatchEnd {
+  reason: 'finished' | 'left' | 'closed';
+  online: boolean;
+  mode: 'coop' | 'vs';
+  /** this player's side won (co-op: the wave 7 boss fell) */
+  won: boolean;
+  winner: number;
+  text: string;
+}
+
+/** A running VS / co-op match: local (one keyboard, two players), hosted (this browser simulates) or joined (this browser mirrors). */
+interface Match {
+  kind: 'local' | 'host' | 'guest';
+  mode: 'coop' | 'vs';
+  net?: NetClient;
+  mirror?: Mirror;
+  sampler?: PadSampler;
+  off: (() => void)[];
+  seq: number;
+  tick: number;
+  sounds: [string, number][];
+  lastM: number;
+  sentAt: number;
+  ended: boolean;
+  escAt: number;
+  note: string;
+  noteT: number;
+}
 
 export class SvnzGame {
   private g: CanvasRenderingContext2D;
@@ -25,6 +60,12 @@ export class SvnzGame {
   help = false;
   debug = false;
   private error = '';
+  /** VS / co-op: the menu entries that need a panel ask the page to show it */
+  onUi: ((kind: string) => void) | null = null;
+  onMatchEnd: ((e: MatchEnd) => void) | null = null;
+  /** true while a panel of the page is open over the menu: the menu ignores the keyboard */
+  uiOpen = false;
+  match: Match | null = null;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.buf = document.createElement('canvas');
@@ -36,6 +77,8 @@ export class SvnzGame {
   }
 
   get currentScreen(): string { return this.screen === 'fight' && !this.help ? 'play' : this.screen; }
+  /** 'menu' | 'play' | ... plus whether an online match is running (the page hides the pause / help buttons) */
+  get online(): boolean { return !!this.match && this.match.kind !== 'local'; }
 
   async start(): Promise<void> {
     this.detach = attachInput();
@@ -78,10 +121,87 @@ export class SvnzGame {
     this.goto('fight');
   }
 
+  // ------------------------------------------------------------------ VS / co-op matches
+  /** Co-op on one keyboard, 2 players: player 1 arrows + Q W E A S D, player 2 I J K L + U O P , N M. */
+  startLocalCoop(chars: [string, string], nicks: [string, string] = ['P1', 'P2']): void {
+    const players: PlayerSlot[] = [
+      { id: 0, nick: nicks[0], char: chars[0], team: 1, control: 'p1' },
+      { id: 1, nick: nicks[1], char: chars[1], team: 1, control: 'p2' },
+    ];
+    this.beginMatch({ kind: 'local', mode: 'coop', players, difficulty: difficultyOf(chars), localId: 0 });
+  }
+
+  /** The lobby said "start": the host simulates, the guests mirror. */
+  startOnline(net: NetClient, room: RoomView, difficulty: Difficulty, you: number): void {
+    const players: PlayerSlot[] = room.players.map((p) => ({ id: p.id, nick: p.name, char: p.char, team: room.mode === 'vs' ? p.team : 1, control: p.id === you ? 'p1' : 'remote' }));
+    this.beginMatch({ kind: net.isHost ? 'host' : 'guest', mode: room.mode, players, difficulty, localId: you, net });
+  }
+
+  private beginMatch(o: { kind: Match['kind']; mode: 'coop' | 'vs'; players: PlayerSlot[]; difficulty: Difficulty; localId: number; net?: NetClient }): void {
+    this.endMatchCleanup();
+    const m: Match = { kind: o.kind, mode: o.mode, net: o.net, off: [], seq: 0, tick: 0, sounds: [], lastM: -1, sentAt: 0, ended: false, escAt: -9, note: '', noteT: 0 };
+    this.match = m;
+    const key = o.mode === 'vs' ? VS_LEVEL : 'normalLevel';
+    if (o.kind === 'guest') {
+      m.mirror = new Mirror(key, o.mode, o.localId);
+      m.sampler = new PadSampler(keyboard('p1'));
+      this.fight = m.mirror.fight;
+      const net = o.net!;
+      m.off.push(net.on((msg) => {
+        if (msg.t === 'snap') m.mirror?.apply(msg.d as Snap);
+        else if (msg.t === 'ended') this.finishMatch('finished', msg.d as { won?: boolean; winner?: number; aborted?: boolean } | null);
+        else if (msg.t === 'closed') this.finishMatch('closed', null);
+      }));
+    } else {
+      this.fight = new Fight(key, { mode: o.mode, players: o.players, difficulty: o.difficulty, localId: o.localId });
+      try { this.fight.record = parseInt(localStorage.getItem('svnz-record-coop') ?? '0', 10) || 0; } catch { /* ignore */ }
+      if (o.kind === 'host') {
+        const net = o.net!;
+        setSoundTap((k, v) => { if (m.sounds.length < 40) m.sounds.push([k, v]); });
+        m.off.push(() => setSoundTap(null));
+        m.off.push(net.on((msg) => {
+          if (msg.t === 'in') this.fight?.players.find((p) => p.slot === msg.from)?.remote?.set(msg.d as { m: number; tp: number });
+          else if (msg.t === 'left') this.fight?.removePlayer(msg.id);
+          else if (msg.t === 'closed') this.finishMatch('closed', null);
+        }));
+      }
+    }
+    this.help = false;
+    this.goto('fight');
+  }
+
+  private endMatchCleanup(): void {
+    const m = this.match;
+    if (!m) return;
+    m.off.forEach((f) => f());
+    m.mirror?.dispose();
+    this.match = null;
+  }
+
+  /** The match is over (finished, left, or the room closed): tell the page, which shows the results / goes back to the lobby. */
+  private finishMatch(reason: MatchEnd['reason'], data: { won?: boolean; winner?: number; aborted?: boolean } | null): void {
+    const m = this.match;
+    if (!m || m.ended) return;
+    m.ended = true;
+    const f = this.fight;
+    const won = data?.won ?? f?.won ?? false;
+    const winner = data?.winner ?? f?.result?.winner ?? 0;
+    const text = reason === 'closed' ? (m.kind === 'guest' && !data ? 'Se perdio la conexion con el anfitrion (debe mantener esta pestana visible).' : 'La sala se cerro.') : data?.aborted ? 'El anfitrion termino la partida.' : reason === 'left' ? '' : m.mode === 'vs' ? (winner ? `Gano el equipo ${winner}` : 'Empate') : won ? 'Completaron el juego!' : 'Fin de la partida';
+    const online = m.kind !== 'local';
+    if (m.kind === 'guest' && reason !== 'finished') m.net?.close();   // lost the host / the room: nothing left to wait for
+    this.endMatchCleanup();
+    this.fight = null;
+    stopMusic();
+    this.goto('menu');
+    this.menu = 'vsOnline';
+    this.sel = 0;
+    this.onMatchEnd?.({ reason, online, mode: m.mode, won, winner, text });
+  }
+
   backAction(): void {
     if (this.screen === 'fight') {
       if (this.help) this.help = false;
-      else this.leaveFight();
+      else this.escape();
     } else if (this.screen === 'menu' && this.menu !== 'firstMenu') {
       this.menu = 'firstMenu';
       this.sel = 0;
@@ -91,9 +211,17 @@ export class SvnzGame {
 
   private leaveFight(): void {
     const f = this.fight;
+    if (this.match) {
+      const m = this.match;
+      const done = !!f?.finished;
+      if (m.kind === 'host' && !m.ended) m.net?.send({ t: 'end', d: { won: f?.won ?? false, winner: f?.result?.winner ?? 0, aborted: !done } });
+      this.finishMatch(m.kind === 'local' || done ? 'finished' : 'left', null);
+      if (m.kind === 'guest') m.net?.close();   // a guest who leaves a match leaves the room
+      return;
+    }
     if (f) {
       try {
-        if (f.count > f.record) localStorage.setItem('svnz-record-' + f.levelKey, String(f.count));
+        if (f.mode === 'story' && f.count > f.record) localStorage.setItem('svnz-record-' + f.levelKey, String(f.count));
       } catch { /* ignore */ }
     }
     this.fight = null;
@@ -136,7 +264,7 @@ export class SvnzGame {
 
   private menuUpdate(): void {
     const m = DB.menus[this.menu];
-    if (!m) return;
+    if (!m || this.uiOpen) return;
     const n = m.options.length;
     if (isPressed('down')) { this.sel = (this.sel + 1) % n; playSound('step'); }
     if (isPressed('up')) { this.sel = (this.sel + n - 1) % n; playSound('step'); }
@@ -152,13 +280,15 @@ export class SvnzGame {
     playSound('action');
     if (o.link) { this.menu = o.link; this.sel = 0; }
     else if (o.action === 'quitGame') { /* the web build has nowhere to quit to */ }
+    else if (o.action?.startsWith('ui:')) this.onUi?.(o.action.slice(3));
     else if (o.action && DB.levels[o.action]) this.startLevel(o.action);
   }
 
   // Menu layout: compact, below the title picture (the original list overlapped the title letters); 7 entries fit.
   private static readonly MENU_TOP = 104;   // below the title and the "Vicemi Mod" line of mainScreen.png
-  private static readonly MENU_STEP = 23;
   private static readonly MENU_X = 112;
+  /** 23 px per entry up to 7 entries (the original look); 8 or more get squeezed to fit under the title */
+  private static step(n: number): number { return n <= 7 ? 23 : Math.max(16, Math.floor((H - 6 - SvnzGame.MENU_TOP) / n)); }
 
   /** Mouse / touch on the canvas: hover moves the selection, a click or tap activates the entry under the pointer.
    *  (A convenience of the web port: the original menu only takes the keyboard.) */
@@ -170,21 +300,56 @@ export class SvnzGame {
     const ly = (clientY - r.top - (r.height - H * s) / 2) / s;
     const m = DB.menus[this.menu];
     if (!m) return;
-    const i = Math.floor((ly - SvnzGame.MENU_TOP) / SvnzGame.MENU_STEP);
-    const inside = i >= 0 && i < m.options.length && lx >= SvnzGame.MENU_X && lx < SvnzGame.MENU_X + 256 &&
-      ly - SvnzGame.MENU_TOP - i * SvnzGame.MENU_STEP < 22;
+    const step = SvnzGame.step(m.options.length);
+    const i = Math.floor((ly - SvnzGame.MENU_TOP) / step);
+    const inside = !this.uiOpen && i >= 0 && i < m.options.length && lx >= SvnzGame.MENU_X && lx < SvnzGame.MENU_X + 256 &&
+      ly - SvnzGame.MENU_TOP - i * step < step - 1;
     this.canvas.style.cursor = inside ? 'pointer' : 'default';
     if (!inside) return;
     if (this.sel !== i) { this.sel = i; if (!down) playSound('step'); }
     if (down) this.activate();
   }
 
+  /** Esc: leave the fight. In an online match it asks twice (the host leaving closes the room for everybody). */
+  private escape(): void {
+    const m = this.match;
+    if (m && m.kind !== 'local' && !m.ended) {
+      if (this.t - m.escAt > 2) {
+        m.escAt = this.t;
+        m.note = m.kind === 'host' ? 'ESC again to end the match' : 'ESC again to leave the room';
+        m.noteT = 2;
+        return;
+      }
+    }
+    this.leaveFight();
+  }
+
   private fightUpdate(dt: number): void {
     const f = this.fight!;
-    if (isPressed('esc')) { this.leaveFight(); return; }
-    if (isPressed('enter')) this.help = !this.help;
-    if (this.help) return;
+    const m = this.match;
+    if (isPressed('esc')) { this.escape(); return; }
+    const online = !!m && m.kind !== 'local';
+    if (!online && isPressed('enter')) this.help = !this.help;
+    if (this.help && !online) return;
+    if (m) m.noteT = Math.max(0, m.noteT - dt);
+    if (m?.kind === 'guest') {
+      // guest: send the controller, show what the host says
+      m.sampler!.sample();
+      const mask = m.sampler!.mask();
+      if (mask !== m.lastM || m.sampler!.hasTap() || this.t - m.sentAt > 0.1) {
+        m.lastM = mask;
+        m.sentAt = this.t;
+        m.net!.send({ t: 'in', d: m.sampler!.take() });
+      }
+      m.mirror!.step(dt);
+      if (m.mirror!.silence > 12 && m.mirror!.lastSeq >= 0) this.finishMatch('closed', null);
+      return;
+    }
     f.update(dt);
+    if (m?.kind === 'host' && !m.ended) {
+      if (++m.tick % 2 === 0) m.net!.send({ t: 'snap', d: makeSnap(f, m.seq++, m.sounds) });
+      else if (m.sounds.length > 30) m.sounds.length = 30;
+    }
     if (f.finished) this.leaveFight();
   }
 
@@ -217,6 +382,8 @@ export class SvnzGame {
         drawFight(g, f, this.debug);
         drawHud(g, f);
         if (f.bannerT > 0) drawBanner(g, f.banner);
+        if (this.match && this.match.noteT > 0) drawText(g, 'smallOn', this.match.note, W / 2, 258, 'center');
+        if (this.match?.kind === 'guest' && this.match.mirror && this.match.mirror.lastSeq < 0) drawText(g, 'small', 'Waiting for the host...', W / 2, 120, 'center');
         if (this.help) {
           const h = img('assets/lang/images/help/help.png');
           if (h) g.drawImage(h, 0, 0);
@@ -233,14 +400,15 @@ export class SvnzGame {
     const sel = img('assets/images/hud/menu/selector.png');
     const m = DB.menus[this.menu];
     if (!m) return;
+    const step = SvnzGame.step(m.options.length);
     m.options.forEach((o, i) => {
-      const y = SvnzGame.MENU_TOP + i * SvnzGame.MENU_STEP;
+      const y = SvnzGame.MENU_TOP + i * step;
       if (sel) {
         g.globalAlpha = i === this.sel ? 1 : 0.6;
-        g.drawImage(sel, 0, i === this.sel ? 0 : 24, 256, 24, SvnzGame.MENU_X, y, 256, 22);
+        g.drawImage(sel, 0, i === this.sel ? 0 : 24, 256, 24, SvnzGame.MENU_X, y, 256, step - 1);
         g.globalAlpha = 1;
       }
-      drawText(g, i === this.sel ? 'smallOn' : 'smallOff', o.textKey, W / 2, y + 7, 'center');
+      drawText(g, i === this.sel ? 'smallOn' : 'smallOff', o.textKey, W / 2, y + Math.round((step - 1 - 8) / 2) + 1, 'center');
     });
   }
 

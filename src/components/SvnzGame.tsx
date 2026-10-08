@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { SvnzGame } from '../svnz/game';
 import TouchControls from './TouchControls';
+import OnlinePanel, { type PanelKind } from './OnlinePanel';
+import '@fontsource/press-start-2p/400.css';
 
 /** Full-window game canvas (480x272 letterboxed). Touch devices get a rotate prompt, the fight controls and
  *  always-visible back / help buttons. Any click or key is the audio-unlocking user gesture. */
@@ -11,6 +13,9 @@ export default function SvnzGameView() {
   const [portrait, setPortrait] = useState(false);
   const [screen, setScreen] = useState('');
   const [full, setFull] = useState(false);
+  const [panel, setPanel] = useState<PanelKind | null>(null);
+  const [roomCode, setRoomCode] = useState('');
+  const [online, setOnline] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const canFull = typeof document !== 'undefined' && !!document.fullscreenEnabled;
 
@@ -18,6 +23,10 @@ export default function SvnzGameView() {
     const g = new SvnzGame(canvasRef.current!);
     gameRef.current = g;
     if (import.meta.env.DEV) (window as unknown as { __svnz: SvnzGame }).__svnz = g;
+    g.onUi = (kind) => setPanel(kind as PanelKind);
+    // invitation link: ?room=ABCDE opens the join panel with the code filled in
+    const invite = new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 5);
+    if (invite && invite.length === 5) { setRoomCode(invite); setPanel('join'); }
     void g.start();
     const gesture = () => g.userGesture();
     window.addEventListener('pointerdown', gesture);
@@ -40,7 +49,7 @@ export default function SvnzGameView() {
   }, []);
 
   useEffect(() => {
-    const id = window.setInterval(() => setScreen(gameRef.current?.currentScreen ?? ''), 120);
+    const id = window.setInterval(() => { setScreen(gameRef.current?.currentScreen ?? ''); setOnline(gameRef.current?.online ?? false); }, 120);
     return () => window.clearInterval(id);
   }, []);
 
@@ -87,12 +96,13 @@ export default function SvnzGameView() {
       {isTouch && !portrait && canFull && (
         <button className="sv-top-btn sv-full-btn" aria-label="Pantalla completa" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFull(); }}>{full ? '✕' : '⛶'}</button>
       )}
-      {isTouch && !portrait && (screen === 'play' || screen === 'fight') && (
+      {isTouch && !portrait && !online && (screen === 'play' || screen === 'fight') && (
         <button className="sv-top-btn sv-help-btn" aria-label="Ayuda" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); key('Enter'); }}>?</button>
       )}
       {isTouch && !portrait && (screen === 'play' || screen === 'fight' || screen === 'menu') && (
         <button className="sv-top-btn" aria-label="Volver" onPointerDown={back}>↩</button>
       )}
+      {panel && gameRef.current && <OnlinePanel game={gameRef.current} kind={panel} initialCode={roomCode} onClose={() => { setPanel(null); setRoomCode(''); }} />}
     </div>
   );
 }

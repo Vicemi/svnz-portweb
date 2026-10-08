@@ -5,6 +5,10 @@
 
 export type Key = 'up' | 'down' | 'left' | 'right' | 'b0' | 'b1' | 'b2' | 'b3' | 'b4' | 'b5' | 'enter' | 'esc';
 
+/** Which keyboard layout a player uses. Player 1 is the original layout; player 2 (local co-op on one keyboard) gets the right-hand block:
+ *  move I J K L, fast U, strong O, jump P, dash `,`, special N, defense M. */
+export type Profile = 'p1' | 'p2';
+
 const BINDINGS: Record<Key, string[]> = {
   up: ['ArrowUp'],
   down: ['ArrowDown'],
@@ -20,6 +24,21 @@ const BINDINGS: Record<Key, string[]> = {
   esc: ['Escape'],
 };
 
+const BINDINGS_P2: Record<Key, string[]> = {
+  up: ['KeyI'],
+  down: ['KeyK'],
+  left: ['KeyJ'],
+  right: ['KeyL'],
+  b0: ['KeyP'],
+  b1: ['KeyU'],
+  b2: ['KeyO'],
+  b3: ['Comma'],
+  b4: ['KeyN'],
+  b5: ['KeyM'],
+  enter: [],
+  esc: [],
+};
+
 const down = new Set<string>();
 const tapped = new Set<string>();
 let prev = new Set<string>();
@@ -28,12 +47,16 @@ let anyQueued = false;
 let anyThisFrame = false;
 
 export function attachInput(target: Window = window): () => void {
+  // typing in a text field (nickname, room code) must not drive the game
+  const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
   const kd = (e: KeyboardEvent) => {
+    if (typing(e.target)) return;
     if (!down.has(e.code)) { anyQueued = true; tapped.add(e.code); }
     down.add(e.code);
     if (e.code.startsWith('Arrow') || e.code === 'Space' || e.code === 'Enter') e.preventDefault();
   };
   const ku = (e: KeyboardEvent) => {
+    if (typing(e.target)) return;
     down.delete(e.code);
     if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   };
@@ -70,11 +93,11 @@ export function pollInput(): void {
   anyQueued = false;
 }
 
-export function isDown(k: Key): boolean {
-  return BINDINGS[k].some((c) => curr.has(c));
+export function isDown(k: Key, profile: Profile = 'p1'): boolean {
+  return (profile === 'p2' ? BINDINGS_P2 : BINDINGS)[k].some((c) => curr.has(c));
 }
-export function isPressed(k: Key): boolean {
-  return BINDINGS[k].some((c) => curr.has(c) && !prev.has(c));
+export function isPressed(k: Key, profile: Profile = 'p1'): boolean {
+  return (profile === 'p2' ? BINDINGS_P2 : BINDINGS)[k].some((c) => curr.has(c) && !prev.has(c));
 }
 export function anyPressed(): boolean {
   return anyThisFrame;
