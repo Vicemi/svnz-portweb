@@ -671,7 +671,8 @@ export class Fight {
     switch (h.target) {
       case 31: if (a.team === b.team) return null; break;
       case 32: if (a.team !== b.team) return null; break;
-      case 33: break;
+      // 33 = hurts everybody (Big Demon's punch and body slam). Between the players of a co-op team it must not: no friendly fire
+      case 33: if (this.mode === 'coop' && a.team === b.team && this.humans.includes(a) && this.humans.includes(b)) return null; break;
       default: if (a.team === b.team) return null;
     }
     if (!a.zDistanceOk(b)) return null;
