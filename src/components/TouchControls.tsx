@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { touchButtons } from '../svnz/online/controls';
 
 /**
  * Mobile controls for Super Vampire Ninja Zero (a 2.5D beat 'em up, so the stick moves on 8 directions):
@@ -14,18 +15,12 @@ type Key = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown' | 'KeyQ' | 'KeyW
 const STICK_RADIUS = 56;
 const DEAD_ZONE = 14;
 
-const BUTTONS: { key: Key; label: string; cls: string }[] = [
-  { key: 'KeyQ', label: 'Q', cls: 'sv-b-fast' },
-  { key: 'KeyW', label: 'W', cls: 'sv-b-strong' },
-  { key: 'KeyE', label: 'E', cls: 'sv-b-jump' },
-  { key: 'KeyA', label: 'A', cls: 'sv-b-special' },
-  { key: 'KeyS', label: 'S', cls: 'sv-b-defense' },
-  { key: 'KeyD', label: 'D', cls: 'sv-b-dash' },
-];
-const SUB: Record<Key, string> = {
-  KeyQ: 'rápido', KeyW: 'fuerte', KeyE: 'salto', KeyA: 'especial', KeyS: 'defensa', KeyD: 'dash',
-  ArrowLeft: '', ArrowRight: '', ArrowUp: '', ArrowDown: '',
+/** Color of each action's ring (the same ones the keyboard-shaped cluster had). */
+const RING: Partial<Record<Key, string>> = {
+  KeyQ: 'rgba(255,210,120,0.85)', KeyW: 'rgba(255,120,120,0.85)', KeyE: 'rgba(140,220,255,0.85)',
+  KeyA: 'rgba(220,140,255,0.85)', KeyS: 'rgba(160,255,160,0.85)', KeyD: 'rgba(255,255,160,0.85)',
 };
+const LETTER: Record<string, string> = { KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyA: 'A', KeyS: 'S', KeyD: 'D' };
 
 const held = new Map<Key, number>();
 function keyDown(code: Key): void {
@@ -58,7 +53,9 @@ function stickKeys(dx: number, dy: number): Key[] {
 
 interface Stick { id: number; ox: number; oy: number; x: number; y: number; keys: Key[] }
 
-export default function TouchControls({ active }: { active: boolean }) {
+/** `char`: the character being played (only its buttons are shown, with what each does); `star`: the ninja-star power-up is active. */
+export default function TouchControls({ active, char = 'Mina', star = false }: { active: boolean; char?: string; star?: boolean }) {
+  const buttons = touchButtons(char, star);
   const refs = useRef(new Map<Key, HTMLDivElement>());
   const stick = useRef<Stick | null>(null);
   const fingers = useRef(new Map<number, Key | null>());
@@ -174,10 +171,10 @@ export default function TouchControls({ active }: { active: boolean }) {
       ) : (
         <div className="sv-stick-hint" aria-hidden="true"><span>✥</span></div>
       )}
-      {BUTTONS.map((b) => (
+      {buttons.map((b, i) => (
         <div key={b.key} ref={(el) => { if (el) refs.current.set(b.key, el); else refs.current.delete(b.key); }}
-          className={'sv-act ' + b.cls + (down.has(b.key) ? ' is-down' : '')} aria-label={SUB[b.key]}>
-          <span className="sv-act-k">{b.label}</span><span className="sv-act-s">{SUB[b.key]}</span>
+          className={`sv-act sv-slot-${i}` + (down.has(b.key) ? ' is-down' : '')} style={{ borderColor: RING[b.key] }} aria-label={b.label}>
+          <span className="sv-act-k">{b.label}</span><span className="sv-act-s">{LETTER[b.key]}</span>
         </div>
       ))}
     </div>

@@ -222,6 +222,9 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
             <CharPicker mode="coop" value={chars[0]} variant={vars[0]} taken={takenBy(0)} onPick={(c) => pick(0, c)} onVariant={(v) => setVars([v, vars[1]])} label="Jugador 1" color={SLOT_COLORS[0]} />
             <CharPicker mode="coop" value={chars[1]} variant={vars[1]} taken={takenBy(1)} onPick={(c) => pick(1, c)} onVariant={(v) => setVars([vars[0], v])} label="Jugador 2" color={SLOT_COLORS[1]} />
           </div>
+          {typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches && (
+            <div className="ol-error" role="note">El coop local necesita un teclado para el jugador 2. En el celular usá las salas online (Crear sala / Unirse).</div>
+          )}
           <div className="ol-keys">
             <div><b style={{ color: SLOT_COLORS[0] }}>J1</b> Flechas mover · Q rápido · W fuerte · E salto · A especial · S defensa · D dash</div>
             <div><b style={{ color: SLOT_COLORS[1] }}>J2</b> I J K L mover · U rápido · O fuerte · P salto · N especial · M defensa · , dash</div>
