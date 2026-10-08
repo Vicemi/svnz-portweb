@@ -9,6 +9,7 @@ import { H, W, drawBanner, drawFight, drawHud, drawText, preloadGraphics } from 
 import { setSoundTap } from './core/audio';
 import { NetClient, type RoomView } from './online/net';
 import { Mirror, makeSnap, type Snap } from './online/sync';
+import { P2P, fetchIceServers } from './online/p2p';
 import { difficultyOf, type Difficulty } from './online/scaling';
 import type { FightSettings } from './online/items';
 
@@ -33,6 +34,8 @@ interface Match {
   net?: NetClient;
   mirror?: Mirror;
   sampler?: PadSampler;
+  /** direct connections with the other players (the relay of the server is the fallback) */
+  p2p?: P2P;
   off: (() => void)[];
   seq: number;
   tick: number;
@@ -156,12 +159,14 @@ export class SvnzGame {
       m.sampler = new PadSampler(keyboard('p1'));
       this.fight = m.mirror.fight;
       const net = o.net!;
+      const onSnap = (d: unknown) => {
+        try { m.mirror?.apply(d as Snap); } catch (e) { if (m.mirror) m.mirror.failures++; console.error('snapshot', e); }
+        if (m.mirror?.mismatch) this.finishMatch('closed', { version: true });
+        else if (m.mirror && m.mirror.failures > 90) this.finishMatch('closed', { broken: true });   // about 3 seconds of unreadable snapshots
+      };
+      this.startDirect(m, o.localId, net, o.players, onSnap, undefined);
       m.off.push(net.on((msg) => {
-        if (msg.t === 'snap') {
-          try { m.mirror?.apply(msg.d as Snap); } catch (e) { if (m.mirror) m.mirror.failures++; console.error('snapshot', e); }
-          if (m.mirror?.mismatch) this.finishMatch('closed', { version: true });
-          else if (m.mirror && m.mirror.failures > 90) this.finishMatch('closed', { broken: true });   // about 3 seconds of unreadable snapshots
-        }
+        if (msg.t === 'snap') onSnap(msg.d);
         else if (msg.t === 'ended') this.finishMatch('finished', msg.d as { won?: boolean; winner?: number; aborted?: boolean } | null);
         else if (msg.t === 'closed') this.finishMatch('closed', null);
         else if (msg.t === 'kicked') this.finishMatch('closed', { kicked: true });
@@ -172,6 +177,7 @@ export class SvnzGame {
       try { this.fight.record = parseInt(localStorage.getItem('svnz-record-coop') ?? '0', 10) || 0; } catch { /* ignore */ }
       if (o.kind === 'host') {
         const net = o.net!;
+        this.startDirect(m, o.localId, net, o.players, undefined, (from, d) => this.fight?.players.find((p) => p.slot === from)?.remote?.set(d as { m: number; tp: number }));
         setSoundTap((k, v) => { if (m.sounds.length < 40) m.sounds.push([k, v]); });
         m.off.push(() => setSoundTap(null));
         m.off.push(net.on((msg) => {
@@ -187,9 +193,19 @@ export class SvnzGame {
     this.goto('fight');
   }
 
+  /** Opens the direct links with the other players (async: it needs the STUN servers from the backend). */
+  private startDirect(m: Match, me: number, net: NetClient, players: PlayerSlot[], onSnap?: (d: unknown) => void, onInput?: (from: number, d: unknown) => void): void {
+    const hostId = net.room?.hostId ?? 0;
+    void fetchIceServers().then((ice) => {
+      if (this.match !== m || m.ended) return;
+      m.p2p = new P2P({ net, me, hostId, guests: players.filter((p) => p.id !== hostId).map((p) => p.id), iceServers: ice, onSnap, onInput });
+    });
+  }
+
   private endMatchCleanup(): void {
     const m = this.match;
     if (!m) return;
+    m.p2p?.close();
     m.off.forEach((f) => f());
     m.mirror?.dispose();
     this.match = null;
@@ -357,17 +373,26 @@ export class SvnzGame {
       if (mask !== m.lastM || m.sampler!.hasTap() || this.t - m.sentAt > 0.1) {
         m.lastM = mask;
         m.sentAt = this.t;
-        m.net!.send({ t: 'in', d: m.sampler!.take() });
+        const st = m.sampler!.take();
+        if (!m.p2p?.sendInput(st)) m.net!.send({ t: 'in', d: st });   // straight to the host when there is a direct link
       }
       m.mirror!.step(dt);
+      { const r = m.p2p?.rtt() ?? 0; f.netInfo = { ping: r > 0 ? r : m.net!.rtt, p2p: r > 0 }; }
       // snapshots stopped while the socket looks fine: it may be half dead, so get a new one (the seat is kept by the session)
       if (m.mirror!.lastSeq >= 0 && m.mirror!.silence > 3 && !m.net!.reconnecting && this.t - m.watchAt > 8) { m.watchAt = this.t; m.net!.forceReconnect(); }
       if (m.mirror!.silence > 12 && m.mirror!.lastSeq >= 0 && !m.net!.reconnecting) this.finishMatch('closed', null);
       return;
     }
     f.update(dt);
+    if (m?.kind === 'host') { const w = m.p2p?.worstRtt() ?? 0; f.netInfo = { ping: w > 0 ? w : m.net!.rtt, p2p: w > 0 }; }
     if (m?.kind === 'host' && !m.ended) {
-      if (++m.tick % 2 === 0) m.net!.send({ t: 'snap', d: makeSnap(f, m.seq++, m.sounds) });
+      // 60 snapshots a second when every guest has a direct link, otherwise 30 a second through the relay (and also directly to those who can)
+      const direct = !!m.p2p && m.p2p.allOpen();
+      if (++m.tick % (direct ? 1 : 2) === 0) {
+        const snap = makeSnap(f, m.seq++, m.sounds);
+        if (m.p2p) m.p2p.sendSnap(JSON.stringify({ t: 'snap', d: snap }));
+        if (!direct) m.net!.send({ t: 'snap', d: snap });
+      }
       else if (m.sounds.length > 30) m.sounds.length = 30;
     }
     if (f.finished) this.leaveFight();

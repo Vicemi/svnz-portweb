@@ -70,7 +70,7 @@ export function makeSnap(fight: Fight, seq: number, sounds: [string, number][]):
 }
 
 interface Lerp { fx: number; fy: number; fz: number; tx: number; ty: number; tz: number; t: number }
-const SNAP_INTERVAL = 1 / 30;
+const DEFAULT_SNAP_INTERVAL = 1 / 30;
 
 /** Guest side: a Fight that mirrors the host's snapshots. */
 export class Mirror {
@@ -79,6 +79,8 @@ export class Mirror {
   private lerp = new Map<number, Lerp>();
   lastSeq = -1;
   lastAt = 0;
+  /** seconds between snapshots (measured): positions are interpolated over this time */
+  interval = DEFAULT_SNAP_INTERVAL;
   /** the host runs another version of the game: its snapshots cannot be read */
   mismatch = false;
   /** snapshots in a row that could not be applied */
@@ -92,8 +94,10 @@ export class Mirror {
 
   apply(s: Snap): void {
     if (s.v !== NET_VERSION) { this.mismatch = true; return; }
-    if (s.q <= this.lastSeq) return;   // out of order or duplicate
-    this.lastAt = performance.now();
+    if (s.q <= this.lastSeq) return;   // out of order or duplicate (the same snapshot may come both directly and through the relay)
+    const now = performance.now();
+    if (this.lastAt) this.interval += (Math.min(0.1, Math.max(1 / 70, (now - this.lastAt) / 1000 / Math.max(1, s.q - this.lastSeq))) - this.interval) * 0.1;
+    this.lastAt = now;
     const F = this.fight;
     const seen = new Set<number>();
     for (const e of s.fs) {
@@ -187,7 +191,7 @@ export class Mirror {
     for (const [u, f] of this.byUid) {
       const l = this.lerp.get(u);
       if (!l || l.t >= 1) continue;
-      l.t = Math.min(1, l.t + dt / SNAP_INTERVAL);
+      l.t = Math.min(1, l.t + dt / this.interval);
       f.pos = { x: l.fx + (l.tx - l.fx) * l.t, y: l.fy + (l.ty - l.fy) * l.t, z: l.fz + (l.tz - l.fz) * l.t };
     }
     for (const s of F.sparks) {
