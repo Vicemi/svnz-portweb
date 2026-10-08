@@ -180,3 +180,31 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
   del invitado moviendo a su personaje en el anfitrión, espejo en el invitado (nombres, barras de compañeros), VS 8 jugadores, victoria por abandono,
   vuelta al lobby con el resultado, coop de 4 (conteos de oleadas y vida de jefes), reanimación entre oleadas, modo historia sin cambios.
 - Limitaciones: la pestaña del anfitrión debe estar visible (rAF); el invitado ve su personaje con la latencia al anfitrión; sin predicción.
+
+## Ronda 13 — VS todos contra todos, vidas, power-ups, XA, sesiones y colores (2026-10-08)
+- **VS = todos contra todos (máx. 4)**, no por equipos: cada jugador es su propio equipo (`team = id + 1`). Cada uno tiene `stocks` (3 vidas por defecto,
+  1-3 a elección del anfitrión): al morir `killFighter` resta una vida, rellena la vida y programa `respawn` (1,8 s, `respawnPlayer`: sitio al azar, vida llena,
+  parpadeo e invulnerabilidad 2,5 s); sin vidas `out`. `Fighter.alive` = no eliminado y (vida > 0 o vidas > 1). Gana el último con `alive`.
+- **HUD VS estilo Smash** (`drawVsBar`): tarjetas abajo (cara = retrato del personaje, nombre ≤ 10, barra de vida, corazones de `PowerUps` anim 12). En coop la
+  vida va sobre la cabeza (`drawNameplate`: flecha del jugador local, iconos de efectos con barra de tiempo, nombre, barra de vida). Se quitó la lista de compañeros.
+- **Power-ups** (`online/items.ts`, `Fight.updateItems/collect`): star, heart (solo coop), bolt, shield, fist, fang. `Fighter.buff {speed, shield, power, fang}` +
+  `stars`; `damageMul`/`speedMul`/`onDealt` (robo de vida). La estrella para quien no es Mina se lanza con el botón especial (`starCd` 0,45 s). Ritmo: 1.º a los
+  14-24 s y luego cada 20-36 s, uno en el mapa a la vez, nunca el mismo dos veces seguidas; el corazón tiene su reloj (8-14 s con alguien caído, luego 12-22 s) y
+  revive a un caído con la mitad de vida (`revivePlayer`). Medido: 6 apariciones en 180 s. Duraciones: estrella 20 s, rayo 12, escudo 10, fuerza 12, colmillo 12.
+- **Sprites** (`tools/build_powerups.py`): mismas reglas que la estrella (máscara de 1 bit, contorno + 3 tonos, luz arriba a la izquierda) desde SVG:
+  `heart-source.svg` y `bolt-source.svg` (SVG Repo, aportados por el usuario) y `shield-/fist-/fang-source.svg` (dibujados para el proyecto; en el SVG el blanco
+  pinta el tono claro y el rojo el contorno). Los de contorno se rellenan (`fill_holes`). 4 cuadros: la estrella gira, los demás llevan un destello que cruza.
+  Hoja `public/assets/bonus/powerups.png` + `src/svnz/data/powerups.json` (`PowerUps`, anim 1-6 = tipo, 11-16 = icono 12x12).
+- **XA en VS** (`roster.ts`: `vsOnly`, `dmg`, `noArmor`): Hero 200 de vida y daño ×0,8; Boss 260 y ×0,65 sin armadura. En coop no se pueden elegir (cliente y servidor).
+- **Colores** (`online/variants.ts`): hasta 4 por personaje = paletas de la hoja; `paletteOf(char, v)`; único por personaje en la sala (servidor: `setVariant`,
+  `taken`). El selector muestra los bloqueados con el nombre de su dueño. El panel se rediseñó con el aspecto del menú del juego (paneles oscuros, marcos azules
+  discontinuos, barra marrón/dorada de selección, título rojo, Press Start 2P).
+- **Red:** el snapshot ahora lleva proyectiles (`pj`, se extrapolan entre snapshots), los tiempos de los efectos (`bt`, el invitado los descuenta localmente), los
+  objetos del mapa y las vidas. Antes el invitado no veía los proyectiles hasta que golpeaban.
+- **Sesiones** (servidor + `online/net.ts`): `sid` secreto guardado en `sessionStorage`; `resume`; reconexión automática con retroceso; asiento reservado 45 s;
+  volver con código + apodo; el anfitrión que recarga en plena partida termina la partida (`end` abortado) y los asientos siguen; `peer` avisa al anfitrión.
+- **Bug encontrado y corregido en las pruebas:** al recargar, el lobby se pintaba antes de cargar los datos y React se caía (`makeDesc` sin datos): ahora el panel
+  de reanudación espera `game.whenReady()` y `portrait()` devuelve vacío si no hay datos.
+- **Verificado** en el navegador integrado con el backend real y 4 pestañas (anfitrión + 3 invitados, uno con viewport móvil `?touch=1`): colores únicos,
+  partida de 4, proyectil visible en el invitado, temporizadores, corte de socket del anfitrión y del invitado móvil (reconexión automática y la partida sigue),
+  recarga del anfitrión en plena partida (vuelven todos al lobby), recarga del invitado. No probado: teléfono físico, cuatro navegadores distintos, red móvil real.
