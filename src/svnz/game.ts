@@ -155,7 +155,11 @@ export class SvnzGame {
       this.fight = m.mirror.fight;
       const net = o.net!;
       m.off.push(net.on((msg) => {
-        if (msg.t === 'snap') m.mirror?.apply(msg.d as Snap);
+        if (msg.t === 'snap') {
+          try { m.mirror?.apply(msg.d as Snap); } catch (e) { if (m.mirror) m.mirror.failures++; console.error('snapshot', e); }
+          if (m.mirror?.mismatch) this.finishMatch('closed', { version: true });
+          else if (m.mirror && m.mirror.failures > 90) this.finishMatch('closed', { broken: true });   // about 3 seconds of unreadable snapshots
+        }
         else if (msg.t === 'ended') this.finishMatch('finished', msg.d as { won?: boolean; winner?: number; aborted?: boolean } | null);
         else if (msg.t === 'closed') this.finishMatch('closed', null);
         else if (msg.t === 'kicked') this.finishMatch('closed', { kicked: true });
@@ -190,7 +194,7 @@ export class SvnzGame {
   }
 
   /** The match is over (finished, left, or the room closed): tell the page, which shows the results / goes back to the lobby. */
-  private finishMatch(reason: MatchEnd['reason'], data: { won?: boolean; winner?: number; aborted?: boolean; kicked?: boolean } | null): void {
+  private finishMatch(reason: MatchEnd['reason'], data: { won?: boolean; winner?: number; aborted?: boolean; kicked?: boolean; version?: boolean; broken?: boolean } | null): void {
     const m = this.match;
     if (!m || m.ended) return;
     m.ended = true;
@@ -198,7 +202,7 @@ export class SvnzGame {
     const won = data?.won ?? f?.won ?? false;
     const winner = data?.winner ?? f?.result?.winner ?? 0;
     const winnerName = f?.players.find((p) => p.team === winner)?.nick ?? '';
-    const text = reason === 'closed' ? (data?.kicked ? 'El anfitrion te saco de la sala.' : m.kind === 'guest' && !data ? 'Se perdio la conexion con el anfitrion (debe mantener esta pestana visible).' : 'La sala se cerro.') : data?.aborted ? 'El anfitrion termino la partida.' : reason === 'left' ? '' : m.mode === 'vs' ? (winner ? `Gano ${winnerName || 'un jugador'}` : 'Empate') : won ? 'Completaron el juego!' : 'Fin de la partida';
+    const text = reason === 'closed' ? (data?.version ? 'Tu version del juego no es la del anfitrion: recarga la pagina (Ctrl+F5) y vuelve a entrar.' : data?.broken ? 'Error de sincronizacion con el anfitrion: recarga la pagina (Ctrl+F5).' : data?.kicked ? 'El anfitrion te saco de la sala.' : m.kind === 'guest' && !data ? 'Se perdio la conexion con el anfitrion (debe mantener esta pestana visible).' : 'La sala se cerro.') : data?.aborted ? 'El anfitrion termino la partida.' : reason === 'left' ? '' : m.mode === 'vs' ? (winner ? `Gano ${winnerName || 'un jugador'}` : 'Empate') : won ? 'Completaron el juego!' : 'Fin de la partida';
     const online = m.kind !== 'local';
     if (m.kind === 'guest' && reason !== 'finished') m.net?.close();   // lost the host / the room: nothing left to wait for
     this.endMatchCleanup();

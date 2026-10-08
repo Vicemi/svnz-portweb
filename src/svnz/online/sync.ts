@@ -25,7 +25,11 @@ export interface FSnap {
   bt: number[];     // seconds left of: speed, shield, damage, life steal, stars
 }
 export interface PSnap { u: number; h: number; w: number; e: number; tg: number }
+/** Version of the snapshot format. Host and guests must run the same one (a tab that kept an old copy of the page after an update does not). */
+export const NET_VERSION = 4;
+
 export interface Snap {
+  v: number;
   q: number;
   tm: number;
   ph: Phase; wi: number; bn: string; bt: number; cnt: number; tl: number; mu: string;
@@ -58,7 +62,7 @@ export function makeSnap(fight: Fight, seq: number, sounds: [string, number][]):
   const pl: PSnap[] = fight.players.map((p) => ({ u: p.uid, h: p.combo.hits, w: r1(p.combo.window), e: r1(p.combo.left), tg: p.comboTarget ? p.comboTarget.uid : 0 }));
   const sp = fight.sparkLog.splice(0).map((s) => [s.char, s.id, r1(s.x), r1(s.y), r1(s.z), s.facing] as [string, number, number, number, number, number]);
   return {
-    q: seq, tm: r1(fight.time), ph: fight.phase, wi: fight.waveIdx, bn: fight.banner, bt: r1(fight.bannerT), cnt: fight.count, tl: r1(fight.timeLeft),
+    v: NET_VERSION, q: seq, tm: r1(fight.time), ph: fight.phase, wi: fight.waveIdx, bn: fight.banner, bt: r1(fight.bannerT), cnt: fight.count, tl: r1(fight.timeLeft),
     mu: fight.musicKey, sh: fight.shake.t > 0 ? fight.shake.amp : 0, fs, pl, it: fight.items.map((i) => [i.type, r1(i.x), r1(i.z), r1(i.t)] as [string, number, number, number]), lv: fight.maxStocks,
     pj: fight.projectiles.filter((p) => p.t < 90).map((p) => [p.char ?? '', p.anim, r1(p.x), r1(p.y), r1(p.z), Math.round(p.vx), Math.round(p.vy), Math.round(p.vz), r1(p.t)] as [string, number, number, number, number, number, number, number, number]), sp, snd: sounds.splice(0),
     fin: fight.finished ? 1 : 0, res: fight.result ? fight.result.winner : -1, won: fight.won ? 1 : 0,
@@ -75,6 +79,10 @@ export class Mirror {
   private lerp = new Map<number, Lerp>();
   lastSeq = -1;
   lastAt = 0;
+  /** the host runs another version of the game: its snapshots cannot be read */
+  mismatch = false;
+  /** snapshots in a row that could not be applied */
+  failures = 0;
 
   constructor(levelKey: string, mode: 'coop' | 'vs', private localId: number) {
     this.fight = new Fight(levelKey, undefined, true);
@@ -83,8 +91,8 @@ export class Mirror {
   }
 
   apply(s: Snap): void {
+    if (s.v !== NET_VERSION) { this.mismatch = true; return; }
     if (s.q <= this.lastSeq) return;   // out of order or duplicate
-    this.lastSeq = s.q;
     this.lastAt = performance.now();
     const F = this.fight;
     const seen = new Set<number>();
@@ -169,6 +177,8 @@ export class Mirror {
     }
     for (const [name, vol] of s.snd) playSound(name, vol);
     if (s.mu && s.mu !== F.musicKey) { F.musicKey = s.mu; playMusic(s.mu); }
+    this.lastSeq = s.q;   // only after it was applied whole: a snapshot that fails must not block the next ones
+    this.failures = 0;
   }
 
   /** Per rendered step: interpolate positions, run the sparks' animations, tick the banner. */
