@@ -10,6 +10,7 @@ import { setSoundTap } from './core/audio';
 import { NetClient, type RoomView } from './online/net';
 import { Mirror, makeSnap, type Snap } from './online/sync';
 import { difficultyOf, type Difficulty } from './online/scaling';
+import type { FightSettings } from './online/items';
 
 type Screen = 'loading' | 'logo' | 'vicemi' | 'menu' | 'fight' | 'error';
 const STEP = 1 / 60;
@@ -66,6 +67,10 @@ export class SvnzGame {
   /** true while a panel of the page is open over the menu: the menu ignores the keyboard */
   uiOpen = false;
   match: Match | null = null;
+  private markReady: () => void = () => undefined;
+  private readyPromise = new Promise<void>((res) => { this.markReady = res; });
+  /** resolves once the data and the pictures are loaded (the lobby may bring a player back into a match before that) */
+  whenReady(): Promise<void> { return this.readyPromise; }
 
   constructor(private canvas: HTMLCanvasElement) {
     this.buf = document.createElement('canvas');
@@ -89,6 +94,7 @@ export class SvnzGame {
       await preloadGraphics();
       void preloadSounds();
       this.goto('logo');
+      this.markReady();
     } catch (e) {
       this.error = String(e);
       this.screen = 'error';
@@ -123,21 +129,22 @@ export class SvnzGame {
 
   // ------------------------------------------------------------------ VS / co-op matches
   /** Co-op on one keyboard, 2 players: player 1 arrows + Q W E A S D, player 2 I J K L + U O P , N M. */
-  startLocalCoop(chars: [string, string], nicks: [string, string] = ['P1', 'P2']): void {
+  startLocalCoop(chars: [string, string], nicks: [string, string] = ['P1', 'P2'], variants: [number, number] = [0, 1]): void {
     const players: PlayerSlot[] = [
-      { id: 0, nick: nicks[0], char: chars[0], team: 1, control: 'p1' },
-      { id: 1, nick: nicks[1], char: chars[1], team: 1, control: 'p2' },
+      { id: 0, nick: nicks[0], char: chars[0], team: 1, control: 'p1', variant: variants[0] },
+      { id: 1, nick: nicks[1], char: chars[1], team: 1, control: 'p2', variant: variants[1] },
     ];
     this.beginMatch({ kind: 'local', mode: 'coop', players, difficulty: difficultyOf(chars), localId: 0 });
   }
 
   /** The lobby said "start": the host simulates, the guests mirror. */
   startOnline(net: NetClient, room: RoomView, difficulty: Difficulty, you: number): void {
-    const players: PlayerSlot[] = room.players.map((p) => ({ id: p.id, nick: p.name, char: p.char, team: room.mode === 'vs' ? p.team : 1, control: p.id === you ? 'p1' : 'remote' }));
-    this.beginMatch({ kind: net.isHost ? 'host' : 'guest', mode: room.mode, players, difficulty, localId: you, net });
+    // VS is a free-for-all: every player is their own team (the server numbers them id + 1)
+    const players: PlayerSlot[] = room.players.map((p) => ({ id: p.id, nick: p.name, char: p.char, team: room.mode === 'vs' ? p.team : 1, control: p.id === you ? 'p1' : 'remote', variant: p.variant }));
+    this.beginMatch({ kind: net.isHost ? 'host' : 'guest', mode: room.mode, players, difficulty, localId: you, net, settings: room.settings });
   }
 
-  private beginMatch(o: { kind: Match['kind']; mode: 'coop' | 'vs'; players: PlayerSlot[]; difficulty: Difficulty; localId: number; net?: NetClient }): void {
+  private beginMatch(o: { kind: Match['kind']; mode: 'coop' | 'vs'; players: PlayerSlot[]; difficulty: Difficulty; localId: number; net?: NetClient; settings?: FightSettings }): void {
     this.endMatchCleanup();
     const m: Match = { kind: o.kind, mode: o.mode, net: o.net, off: [], seq: 0, tick: 0, sounds: [], lastM: -1, sentAt: 0, ended: false, escAt: -9, note: '', noteT: 0 };
     this.match = m;
@@ -151,9 +158,11 @@ export class SvnzGame {
         if (msg.t === 'snap') m.mirror?.apply(msg.d as Snap);
         else if (msg.t === 'ended') this.finishMatch('finished', msg.d as { won?: boolean; winner?: number; aborted?: boolean } | null);
         else if (msg.t === 'closed') this.finishMatch('closed', null);
+        else if (msg.t === 'kicked') this.finishMatch('closed', { kicked: true });
+        else if (msg.t === 'link' && msg.state === 'back' && m.mirror) m.mirror.lastAt = performance.now();   // do not count our own outage as a silent host
       }));
     } else {
-      this.fight = new Fight(key, { mode: o.mode, players: o.players, difficulty: o.difficulty, localId: o.localId });
+      this.fight = new Fight(key, { mode: o.mode, players: o.players, difficulty: o.difficulty, localId: o.localId, settings: o.settings });
       try { this.fight.record = parseInt(localStorage.getItem('svnz-record-coop') ?? '0', 10) || 0; } catch { /* ignore */ }
       if (o.kind === 'host') {
         const net = o.net!;
@@ -162,6 +171,8 @@ export class SvnzGame {
         m.off.push(net.on((msg) => {
           if (msg.t === 'in') this.fight?.players.find((p) => p.slot === msg.from)?.remote?.set(msg.d as { m: number; tp: number });
           else if (msg.t === 'left') this.fight?.removePlayer(msg.id);
+          else if (msg.t === 'peer' && !msg.online) this.fight?.players.find((p) => p.slot === msg.id)?.remote?.release();   // a guest lost the connection: stand still
+          else if (msg.t === 'ended') this.finishMatch('finished', msg.d as { aborted?: boolean } | null);   // the server ended the match (we were lost for too long)
           else if (msg.t === 'closed') this.finishMatch('closed', null);
         }));
       }
@@ -179,14 +190,15 @@ export class SvnzGame {
   }
 
   /** The match is over (finished, left, or the room closed): tell the page, which shows the results / goes back to the lobby. */
-  private finishMatch(reason: MatchEnd['reason'], data: { won?: boolean; winner?: number; aborted?: boolean } | null): void {
+  private finishMatch(reason: MatchEnd['reason'], data: { won?: boolean; winner?: number; aborted?: boolean; kicked?: boolean } | null): void {
     const m = this.match;
     if (!m || m.ended) return;
     m.ended = true;
     const f = this.fight;
     const won = data?.won ?? f?.won ?? false;
     const winner = data?.winner ?? f?.result?.winner ?? 0;
-    const text = reason === 'closed' ? (m.kind === 'guest' && !data ? 'Se perdio la conexion con el anfitrion (debe mantener esta pestana visible).' : 'La sala se cerro.') : data?.aborted ? 'El anfitrion termino la partida.' : reason === 'left' ? '' : m.mode === 'vs' ? (winner ? `Gano el equipo ${winner}` : 'Empate') : won ? 'Completaron el juego!' : 'Fin de la partida';
+    const winnerName = f?.players.find((p) => p.team === winner)?.nick ?? '';
+    const text = reason === 'closed' ? (data?.kicked ? 'El anfitrion te saco de la sala.' : m.kind === 'guest' && !data ? 'Se perdio la conexion con el anfitrion (debe mantener esta pestana visible).' : 'La sala se cerro.') : data?.aborted ? 'El anfitrion termino la partida.' : reason === 'left' ? '' : m.mode === 'vs' ? (winner ? `Gano ${winnerName || 'un jugador'}` : 'Empate') : won ? 'Completaron el juego!' : 'Fin de la partida';
     const online = m.kind !== 'local';
     if (m.kind === 'guest' && reason !== 'finished') m.net?.close();   // lost the host / the room: nothing left to wait for
     this.endMatchCleanup();
@@ -342,7 +354,7 @@ export class SvnzGame {
         m.net!.send({ t: 'in', d: m.sampler!.take() });
       }
       m.mirror!.step(dt);
-      if (m.mirror!.silence > 12 && m.mirror!.lastSeq >= 0) this.finishMatch('closed', null);
+      if (m.mirror!.silence > 12 && m.mirror!.lastSeq >= 0 && !m.net!.reconnecting) this.finishMatch('closed', null);
       return;
     }
     f.update(dt);
@@ -382,7 +394,8 @@ export class SvnzGame {
         drawFight(g, f, this.debug);
         drawHud(g, f);
         if (f.bannerT > 0) drawBanner(g, f.banner);
-        if (this.match && this.match.noteT > 0) drawText(g, 'smallOn', this.match.note, W / 2, 258, 'center');
+        if (this.match && this.match.noteT > 0) drawText(g, 'smallOn', this.match.note, W / 2, 124, 'center');
+        if (this.match?.net?.reconnecting) drawText(g, 'smallOn', 'Reconnecting...', W / 2, 108, 'center');
         if (this.match?.kind === 'guest' && this.match.mirror && this.match.mirror.lastSeq < 0) drawText(g, 'small', 'Waiting for the host...', W / 2, 120, 'center');
         if (this.help) {
           const h = img('assets/lang/images/help/help.png');

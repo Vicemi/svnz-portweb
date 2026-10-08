@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SvnzGame } from '../svnz/game';
 import TouchControls from './TouchControls';
 import OnlinePanel, { type PanelKind } from './OnlinePanel';
+import { storedSession } from '../svnz/online/net';
 import '@fontsource/press-start-2p/400.css';
 
 /** Full-window game canvas (480x272 letterboxed). Touch devices get a rotate prompt, the fight controls and
@@ -26,7 +27,10 @@ export default function SvnzGameView() {
     g.onUi = (kind) => setPanel(kind as PanelKind);
     // invitation link: ?room=ABCDE opens the join panel with the code filled in
     const invite = new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 5);
-    if (invite && invite.length === 5) { setRoomCode(invite); setPanel('join'); }
+    const stored = storedSession();
+    // a page reload in the middle of an online session (even with the invitation link still in the address) takes the seat back
+    if (stored && (!invite || invite === stored.code)) setPanel('resume');
+    else if (invite && invite.length === 5) { setRoomCode(invite); setPanel('join'); }
     void g.start();
     const gesture = () => g.userGesture();
     window.addEventListener('pointerdown', gesture);

@@ -1,7 +1,7 @@
 // Little pictures of the characters for the lobby: the first frame of their standing animation, drawn from the game's own sprite sheets.
 import { img } from '../core/assets';
 import { CHARS, FSM } from '../fight/fighter';
-import { makeDesc } from '../fight/data';
+import { DB, makeDesc } from '../fight/data';
 import { drawFrame } from '../render';
 import { rosterOf } from './roster';
 
@@ -12,6 +12,7 @@ export function portrait(charKey: string, palette = -1): string {
   const id = `${charKey}:${palette}`;
   const hit = cache.get(id);
   if (hit) return hit;
+  if (!DB.chars[charKey]) return '';   // data not loaded yet
   const r = rosterOf(charKey);
   const desc = makeDesc({ type: r.key, nameIndex: 0, attrs: {} });
   const sheetIdx = palette >= 0 ? palette % Math.max(1, desc.numberOfPalettes) : Math.max(0, desc.color);
@@ -27,7 +28,10 @@ export function portrait(charKey: string, palette = -1): string {
   const g = c.getContext('2d')!;
   g.imageSmoothingEnabled = false;
   g.scale(2, 2);
-  drawFrame(g, desc.dataKey, sheetIdx, frame, 32, 58, 1);
+  // big sprites (the XA boss) are scaled down to fit the picture
+  const ir = cs.images[frame.img];
+  const hh = ir ? ir[3] * (cs.scale ?? 1) : 40;
+  drawFrame(g, desc.dataKey, sheetIdx, frame, 32, 60, 1, 1, Math.min(1, 52 / Math.max(1, hh)));
   const url = c.toDataURL('image/png');
   cache.set(id, url);
   return url;
