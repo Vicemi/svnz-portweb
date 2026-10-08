@@ -216,3 +216,8 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
 - Paneles: barras de desplazamiento finas (5 px) con el marrón/dorado del juego; en `pointer: coarse` campos a 16 px (iOS no hace zoom), objetivos >= 44 px y
   aviso de que el coop local necesita teclado. Probado con viewport 812x375 (peleas con BigDemon y Mina) y 375x812 (lobby).
 
+
+## Ronda 15 — invitados congelados y fuego amigo (2026-10-08)
+- Causa del congelamiento: host e invitado con versiones distintas del juego (pestana con el JS viejo tras un deploy): `Mirror.apply` lanzaba una excepcion en cada snapshot tras avanzar `lastSeq`, asi que todos los siguientes fallaban. Ahora los snapshots llevan `v` (`NET_VERSION`), una version distinta muestra un aviso, un snapshot fallido no avanza `lastSeq` y tras ~3 s de fallos se sale con un mensaje.
+- El rele del servidor se midio por Cloudflare (600/600 y 3600/3600 snapshots, sin cierres en 145 s).
+- Fuego amigo: `BigDemon_Punch/BodySlam/BodySlamIntro` tienen target 33 (golpean a todos). En coop no dañan a los jugadores del mismo equipo (los enemigos conservan el comportamiento original).
