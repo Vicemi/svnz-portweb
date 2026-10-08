@@ -63,7 +63,12 @@ export function preloadSounds(): Promise<unknown> {
   return Promise.all(Object.entries(SOUNDS).filter(([k]) => !k.startsWith('bgm')).map(([, f]) => buffer(f)));
 }
 
+/** Online host: sees every sound the simulation plays so the guests can play it too. */
+export let soundTap: ((key: string, volume: number) => void) | null = null;
+export function setSoundTap(f: ((key: string, volume: number) => void) | null): void { soundTap = f; }
+
 export function playSound(key: string, volume = 1): void {
+  soundTap?.(key, volume);
   if (!soundOn) return;
   const f = SOUNDS[key];
   if (!f) return;

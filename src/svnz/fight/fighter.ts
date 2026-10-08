@@ -6,7 +6,7 @@ import xaJson from '../data/xa.json';
 import starJson from '../data/star.json';
 import type { Act, Anim, CharDesc, CharSprites, Cond, ControlTrig, FState, FsmData, HitDef, Params, Rect, Trig } from './types';
 import type { Fight } from './fight';
-import type { Pad } from './pad';
+import type { Pad, RemoteSource } from './pad';
 import { playSound } from '../core/audio';
 
 export const FSM = fsmJson as unknown as FsmData;
@@ -167,6 +167,12 @@ export class Fighter {
   evil = false;
   extra = false;
   name: string;
+  /** VS / co-op: slot of the player (-1 = a CPU fighter), nickname, combo counter, last enemy hit and the network input (remote players) */
+  slot = -1;
+  nick = '';
+  combo = { hits: 0, window: 0, left: 0 };
+  comboTarget: Fighter | null = null;
+  remote: RemoteSource | null = null;
   sheet = 0;
   ai: { update(dt: number): void } | null = null;
   /** IAIFighter target (Fighter +0x31c): who the AI is aiming at; null = none (-1). */

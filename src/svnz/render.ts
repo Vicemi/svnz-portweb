@@ -3,6 +3,7 @@ import { img, preloadImages } from './core/assets';
 import { CHARS, type Fighter } from './fight/fighter';
 import type { Fight } from './fight/fight';
 import type { Frame } from './fight/types';
+import { SLOT_COLORS } from './online/roster';
 
 export const W = 480;
 export const H = 272;
@@ -93,7 +94,7 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
   }
   for (const f of fight.fighters) {
     if (f.dead || !f.frame) continue;
-    items.push({ z: f.pos.z, draw: () => drawFighter(g, f, debug) });
+    items.push({ z: f.pos.z, draw: () => drawFighter(g, f, debug, fight) });
   }
   for (const s of fight.sparks) {
     const [sx, sy] = screenOf(s.x, s.y, s.z);
@@ -128,11 +129,35 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
   g.restore();
 }
 
-function drawFighter(g: CanvasRenderingContext2D, f: Fighter, debug: boolean): void {
+/** The sheets only have the printable ASCII range: anything else is dropped; long names are cut. */
+const plain = (s: string, max: number): string => s.replace(/[^\x21-\x7e ]/g, '').trim().slice(0, max);
+
+/** Name over a player's head (VS / co-op): nickname, and under it the character it picked; a colored bar tells the players apart. */
+function drawNameplate(g: CanvasRenderingContext2D, f: Fighter, fight: Fight, sx: number, sy: number): void {
+  const nick = plain(f.nick || f.name, 12) || `P${f.slot + 1}`;
+  const ch = plain(f.desc.alias, 12);
+  let top = sy - 52;
+  const body = f.rects('body');
+  if (body.length) top = Math.min(...body.map((r) => r[1] + CAM_Y)) - 2;
+  top = Math.max(2, top);
+  const w = Math.max(textWidth('small', nick), textWidth('small', ch));
+  const x = Math.round(sx - w / 2);
+  const y = top - 22;
+  const col = SLOT_COLORS[f.slot % SLOT_COLORS.length]!;
+  g.fillStyle = 'rgba(0,0,0,0.55)';
+  g.fillRect(x - 2, y - 1, w + 4, 20);
+  g.fillStyle = col;
+  g.fillRect(x - 2, y + 19, w + 4, 2);
+  drawText(g, f.slot === fight.local.slot ? 'smallOn' : 'small', nick, sx, y, 'center');
+  drawText(g, 'smallOff', ch, sx, y + 9, 'center');
+}
+
+function drawFighter(g: CanvasRenderingContext2D, f: Fighter, debug: boolean, fight: Fight): void {
   if ((f.blink && !f.blinkOn) || f.hidden) return;
   let [sx, sy] = screenOf(f.pos.x, f.pos.y, f.pos.z);
   if (f.shake.on) sx += (Math.random() * 2 - 1) * f.shake.amp;
   drawFrame(g, f.desc.dataKey, f.sheet, f.frame!, sx, sy, f.facing);
+  if (f.slot >= 0 && fight.mode !== 'story') drawNameplate(g, f, fight, sx, sy);
   if (debug) {
     g.lineWidth = 1;
     for (const [k, col] of [['body', '#0af'], ['hit', '#f00']] as const) {
@@ -169,7 +194,7 @@ export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
   const bars = img('assets/images/hud/bars.png');
   const full = img('assets/images/hud/fullBars.png');
   const fx = img('assets/images/hud/barsEffect.png');
-  const p = fight.players[0];
+  const p = fight.local;
   if (!bars || !full || !p) return;
   // player: life frame (10,12), name above it, power frame (18,24) with orbs
   lifeBar(g, 10, 12, p.life, p.lifeMax, false);
@@ -192,10 +217,13 @@ export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
     g.fillStyle = '#f8c028';
     g.fillRect(129, 33, Math.round(40 * Math.min(1, p.stars / 20)), 6);
   }
-  drawText(g, 'small', p.name, 32, 4);
+  drawText(g, 'small', plain(p.name, 16), 32, 4);
   drawText(g, 'small', 'Press ENTER for Help', 200, 6);
-  drawText(g, 'smallOn', `Record: ${fight.record}`, 452, 11, 'right');
-  drawText(g, 'smallOn', `Count: ${fight.count}`, 452, 24, 'right');
+  if (fight.mode !== 'vs') {
+    drawText(g, 'smallOn', `Record: ${fight.record}`, 452, 11, 'right');
+    drawText(g, 'smallOn', `Count: ${fight.count}`, 452, 24, 'right');
+  }
+  if (fight.mode !== 'story') drawSquad(g, fight);
   if (fight.wave?.mode === 'TimeMode') {
     const t = Math.ceil(fight.timeLeft);
     drawText(g, 'smallOn', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, 240, 30, 'center');
@@ -204,7 +232,7 @@ export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
   const e = fight.target;
   if (e && !e.dead) {
     lifeBar(g, 304, 258, e.life, e.lifeMax, true);
-    drawText(g, 'small', e.name, 326, 250);
+    drawText(g, 'small', plain(e.name, 20), 326, 250);
   }
   // combo counter: bottom left
   const cb = img('assets/images/hud/comboBars.png');
@@ -223,4 +251,32 @@ export function drawBanner(g: CanvasRenderingContext2D, text: string): void {
   g.fillStyle = 'rgba(0,0,0,0.45)';
   g.fillRect(0, 127, W, 18);
   drawText(g, 'small', text, W / 2, 132, 'center');
+}
+
+/** VS / co-op: life of everybody else in the match, so the team can see who is about to fall. Allies on the left under the
+ *  player's own bars, rivals (VS) on the right. */
+function drawSquad(g: CanvasRenderingContext2D, fight: Fight): void {
+  const me = fight.local;
+  const row = (f: Fighter, x: number, y: number, right: boolean) => {
+    const col = SLOT_COLORS[f.slot % SLOT_COLORS.length]!;
+    const w = 64;
+    const nick = plain(f.nick || f.name, 8) || `P${f.slot + 1}`;
+    g.fillStyle = 'rgba(0,0,0,0.55)';
+    g.fillRect(x - 2, y - 1, w + 26, 15);
+    g.fillStyle = col;
+    g.fillRect(right ? x + w + 22 : x - 2, y - 1, 2, 15);
+    const tx = right ? x + w + 20 : x + 2;
+    drawText(g, f.dead || f.life <= 0 ? 'smallOff' : 'small', nick, tx, y, right ? 'right' : 'left');
+    const bx = right ? x : x + 2, by = y + 9;
+    g.fillStyle = '#140c20';
+    g.fillRect(bx, by, w, 4);
+    const k = Math.max(0, Math.min(1, f.life / Math.max(1, f.lifeMax)));
+    g.fillStyle = k > 0.5 ? '#58d858' : k > 0.25 ? '#f8c028' : '#e83838';
+    g.fillRect(bx, by, Math.round(w * k), 4);
+    if (f.dead || f.life <= 0) drawText(g, 'smallOn', 'KO', right ? x + w + 20 : bx + w + 4, y + 3, right ? 'right' : 'left');
+  };
+  const mates = fight.players.filter((f) => f !== me && f.team === me.team);
+  const rivals = fight.players.filter((f) => f.team !== me.team);
+  mates.forEach((f, i) => row(f, 10, 50 + i * 17, false));
+  rivals.forEach((f, i) => row(f, 480 - 10 - 90, 12 + i * 17, true));
 }
