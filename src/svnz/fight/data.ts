@@ -2,6 +2,7 @@
 import { loadText } from '../core/assets';
 import type { CharDesc } from './types';
 import { registerBonus } from '../bonus/data';
+import { registerOnline } from '../online/register';
 
 const DEFAULTS: Record<string, number> = { friction: 1200, gravity: -1200, reflexesFrequency: 4, walkSpeed: 0, strength: 1 };
 
@@ -110,6 +111,7 @@ export async function loadData(): Promise<void> {
     DB.menus[el.tagName] = { cancel: el.getAttribute('cancel') ?? undefined, options: Array.from(el.children).map((o) => attrs(o) as unknown as MenuOption) };
   }
   registerBonus();   // XA bosses mode: extra data on top of the original tables
+  registerOnline();  // VS arena + "VS y Online" menu
 }
 
 /** Resolve a fighter of a list: nameIndex -1 = random name, color -1 = random palette; per-entry overrides. */

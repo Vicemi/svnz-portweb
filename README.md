@@ -47,6 +47,36 @@ El juego es **jugable**, pero todavía hay detalles por igualar con el original.
 - **Audio original:** música, efectos y voces (y los efectos de XA en el modo bonus).
 - **Celular:** controles táctiles con los 6 botones, aviso para girar el teléfono y **botón de pantalla completa**.
 
+### 🌐 VS y Online (agregado del port, no existía en el original)
+
+Menú principal → **VS y Online**:
+
+- **Coop Local (2 jug.)**: dos jugadores en el mismo teclado, cada uno con su personaje.
+- **Crear sala: Coop**: sala online con un **código** que te da el [backend](https://github.com/Vicemi/svnz-backend); hasta **4 jugadores** para pasar el modo historia juntos (crossplay: PC y celular entran a la misma sala).
+- **Crear sala: VS**: peleas de hasta **4 contra 4**; cada jugador elige su personaje y su equipo, y el creador de la sala decide cuándo empezar.
+- **Unirse con codigo**: o abrí un enlace de invitación `…/?room=ABCDE`.
+
+Cómo se juega:
+
+- **Personajes elegibles** (estilo selección de personaje): Mina, Ninja, Demon Ninja, Gold Demon, Murciélago, Big Demon y Drácula, cada uno con sus movimientos del juego original (Mina tiene combos, saltos, dash, especiales y defensa; Big Demon, armadura y *body slam*; Drácula, desplazamiento y patada voladora; etc.). Dos jugadores que eligen el mismo personaje reciben colores distintos.
+- **Sobre cada personaje** se ve el apodo del jugador y el personaje que eligió, con una barra del color del jugador. Arriba a la izquierda ves la **vida de tus compañeros** (y a la derecha la de los rivales en VS) para saber quién está por caer.
+- **Dificultad del coop**: cada jugador extra suma un **6 %** de vida a los enemigos y **más enemigos** por oleada y en pantalla (con 2 jugadores, ×1,75: donde antes aparecían 2 ahora aparecen 4), los **jefes** tienen mucha más vida, y los personajes fuertes (Big Demon, Drácula, Gold Demon…) endurecen aún más el juego. Entre oleadas los caídos vuelven con la mitad de su vida; se pierde cuando caen todos. Los números exactos están en la [guía del backend](https://github.com/Vicemi/svnz-backend#reglas-del-juego-que-aplica-el-servidor).
+- **Controles del jugador 2 (coop local):** **I J K L** mover · **U** ataque rápido · **O** ataque fuerte · **P** salto · **N** especial · **M** defensa · **,** dash. El jugador 1 usa los controles de siempre.
+- En una partida online, **Esc dos veces** sale: si sos invitado dejás la sala; si sos el anfitrión terminás la partida y todos vuelven al lobby.
+
+> La pelea online corre en el navegador del **anfitrión** (el que crea la sala): tiene que mantener la pestaña visible. Los invitados juegan con la latencia hacia el anfitrión (el lobby muestra el *ping*).
+
+#### Montar tu propio backend
+
+Los modos online necesitan un servidor de salas. **Cualquiera puede montar el suyo**: el código, la guía de instalación, de Docker y de Cloudflare Tunnel / Zero Trust están en **[github.com/Vicemi/svnz-backend](https://github.com/Vicemi/svnz-backend)**. Después, el juego solo necesita dos variables de entorno **al compilarse**:
+
+| Variable | Valor |
+| :--- | :--- |
+| `PUBLIC_SVNZ_BACKEND_URL` | Dirección https de tu backend, sin `/` final (ej. `https://svnz-api.tudominio.com`). |
+| `PUBLIC_SVNZ_BACKEND_TOKEN` | El `GAME_TOKEN` del `.env` del backend. |
+
+En **Cloudflare Pages**: *Settings → Variables and Secrets* → agregalas y volvé a desplegar. En local, creá un `.env` (hay un [`.env.example`](.env.example)). Sin ellas, el coop local funciona igual y los modos online muestran «Backend sin configurar».
+
 ### 🗺️ Planes a futuro
 
 - [x] Motor de peleas y máquinas de estados reales
@@ -75,6 +105,10 @@ El juego es **jugable**, pero todavía hay detalles por igualar con el original.
 | Ayuda durante la pelea | **Enter** |
 | Pantalla completa | **F4** |
 | Salir del modo actual | **Esc** |
+
+### VS y Online
+
+Los controles de pelea son los mismos (el jugador 1 / quien juega online). En el lobby se usa el mouse o el toque; en el celular las salas online funcionan con los controles táctiles de siempre. Ver «VS y Online» más arriba para los controles del jugador 2 en el coop local.
 
 ### Celular / táctil
 
@@ -137,6 +171,7 @@ La versión pública vivirá en **[svnz-portweb.vicemi.dev](https://svnz-portweb
 | `/?level=timeAttackLevel` / `survivalLevel` / `practiceLevel` | Otros modos |
 | `/?level=bonusXaLevel` | Bonus Bosses: jefe y héroe de XA |
 | `/?level=bigDemonLevel` / `draculaLevel` / `batLevel` / `demonNinjaLevel` / `genericNinjaLevel` | Enemy Test |
+| `/?room=ABCDE` | Abre «Unirse» con el código de sala ya escrito (enlace de invitación) |
 | `/?debug=1` | Dibuja las zonas de golpe (rojo) y de cuerpo (azul) |
 | `/?touch=1` / `/?touch=0` | Fuerza / desactiva los controles táctiles |
 
@@ -148,7 +183,7 @@ La versión pública vivirá en **[svnz-portweb.vicemi.dev](https://svnz-portweb
 /
 ├── public/assets/            # assets originales del juego + manifest.json
 ├── src/
-│   ├── components/           # SvnzGame.tsx (canvas, orientación, pantalla completa) y TouchControls.tsx
+│   ├── components/           # SvnzGame.tsx (canvas, orientación, pantalla completa), TouchControls.tsx y OnlinePanel.tsx (lobby y selección de personaje)
 │   ├── pages/index.astro     # página única y estilos
 │   └── svnz/
 │       ├── game.ts           # estados de la app: logos → menú → pelea
@@ -156,6 +191,7 @@ La versión pública vivirá en **[svnz-portweb.vicemi.dev](https://svnz-portweb
 │       ├── core/             # carga de assets, audio, teclado
 │       ├── fight/            # luchador (máquina de estados, física), pelea y oleadas, IA, datos
 │       ├── bonus/            # datos del modo Bonus Bosses (estados, golpes, IA, niveles y menú de los personajes de XA)
+│       ├── online/           # VS y Online: personajes elegibles, dificultad, cliente del backend (net), sincronía anfitrión/invitado (sync), retratos
 │       └── data/             # chars.json, fsm.json, ai.json y xa.json (generados por tools/)
 ├── tools/                    # build_chars.py, build_fsm.py, gen-manifest.mjs
 ├── research/                 # herramientas de descompilación (Ghidra, decodificadores, captura del original)

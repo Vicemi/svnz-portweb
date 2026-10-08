@@ -3,3 +3,6 @@ dist/
 .astro/
 research/
 *.log
+.env
+.env.*
+!.env.example

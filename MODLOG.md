@@ -161,3 +161,22 @@ Pendiente: coop (el compañero usa la IA del xml), Dracula/BigDemon movimientos 
 - Bug: en BossMode los extras seguían apareciendo (1 por segundo) mientras el jefe moría (life 0 pero aún sin `dead`), y al pasar a
   `cleared` se les mataba nada más caer, con el cartel de la fase siguiente en pantalla. Ahora un jefe con life 0 cierra la oleada
   (`clear()`) y no entra ningún luchador nuevo; en TimeMode tampoco se genera uno en el mismo tick en que se acaba el tiempo.
+
+## Ronda 12 — VS y Online (2026-10-08)
+- Menú: entrada **VS y Online** (8 entradas; con más de 7 la separación baja a 20 px para que entren bajo el título) -> submenú (Coop Local,
+  Crear sala Coop, Crear sala VS, Unirse con codigo). Las acciones `ui:*` abren el panel React `OnlinePanel` (lobby, selección de personaje con
+  retratos sacados de los sprites del juego, fuente Press Start 2P).
+- Motor: `Fight(levelKey, opts?)`. Sin `opts` todo igual que antes (modo `story`, un humano). Con `opts` (`FightOptions`): `mode` coop|vs, `players`
+  (`PlayerSlot`: id, apodo, personaje, equipo, control p1|p2|remote), dificultad, `localId`. `Fight.humans`/`local`/`mode`/`difficulty`; el combo y el
+  objetivo pasan a `Fighter.combo`/`comboTarget` (la HUD usa `fight.local`). Nivel VS = `vsLevel` (arena, oleada `VsMode` sin enemigos, gana el
+  último equipo con alguien vivo). Coop = `normalLevel` con escalado (`scaleList`, `activeEnemies`, vida de jefes), tope de 10 enemigos en pantalla y
+  8 acompañantes de jefe, los caídos vuelven entre oleadas (mitad de vida) y los vivos recuperan un cuarto; se pierde cuando caen todos.
+- Entrada: `Profile` p1/p2 (`input.ts`); P2 = IJKL + U O P , N M. `UserPad(KeySource)`; `RemoteSource` (host) reconstruye pulsaciones desde
+  máscaras `{m, tp}` (mantenidas / pulsadas desde el último paquete); `PadSampler` (invitado) las genera. Escribir en un campo de texto no mueve el juego.
+- Red (backend `svnz-backend`, repo aparte): anfitrión-autoritativo. El anfitrión simula y manda `Snap` 30 veces por segundo (`online/sync.ts`:
+  luchadores con posición, anim, frame, vida, banderas; chispas y sonidos nuevos; combo por jugador); el invitado mantiene un `Mirror` (Fight con
+  `mirror=true`) que interpola posiciones entre snapshots y copia animaciones. Sonidos: `setSoundTap` en `audio.ts`.
+- Verificado en el navegador con el backend real y dos pestañas: crear sala, invitación `?room=`, unirse, elegir personaje, listo, empezar, controles
+  del invitado moviendo a su personaje en el anfitrión, espejo en el invitado (nombres, barras de compañeros), VS 8 jugadores, victoria por abandono,
+  vuelta al lobby con el resultado, coop de 4 (conteos de oleadas y vida de jefes), reanimación entre oleadas, modo historia sin cambios.
+- Limitaciones: la pestaña del anfitrión debe estar visible (rAF); el invitado ve su personaje con la latencia al anfitrión; sin predicción.

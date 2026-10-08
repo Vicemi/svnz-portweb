@@ -2,9 +2,11 @@
 // slow motion, shakes and the wave flow of each game mode.
 import { Fighter, CHARS, FSM, type Spark, type Clone } from './fighter';
 import { DB, makeDesc, type FighterSpec, type LevelDef, type WaveDef } from './data';
-import { AIPad, UserPad } from './pad';
+import { AIPad, RemoteSource, UserPad, keyboard } from './pad';
 import { AIController } from './ai';
 import { playMusic, playSound } from '../core/audio';
+import { rosterOf } from '../online/roster';
+import { SOLO, type Difficulty } from '../online/scaling';
 
 export interface Area { x0: number; z0: number; w: number; d: number }
 
@@ -16,6 +18,28 @@ export interface Projectile { x: number; y: number; z: number; vx: number; vy: n
 export interface Item { x: number; z: number; t: number }
 
 export type Phase = 'intro' | 'ready' | 'fight' | 'cleared' | 'failed' | 'done';
+
+/** One human of a VS / co-op match (local keyboard, second keyboard layout, or a remote player on the network). */
+export interface PlayerSlot { id: number; nick: string; char: string; team: number; control: 'p1' | 'p2' | 'remote' }
+export interface FightOptions {
+  mode: 'coop' | 'vs';
+  players: PlayerSlot[];
+  difficulty: Difficulty;
+  /** slot of the player whose screen this is */
+  localId: number;
+}
+export type FightMode = 'story' | 'coop' | 'vs';
+
+export { VS_LEVEL } from '../online/const';
+
+/** Co-op caps: enemies on screen at once (waves) / extra fighters next to a boss. */
+const MAX_ON_SCREEN = 10;
+const MAX_EXTRAS = 8;
+
+const scaleList = <T>(list: T[], factor: number): T[] => {
+  const n = Math.max(list.length ? 1 : 0, Math.round(list.length * factor));
+  return Array.from({ length: n }, (_, i) => list[i % list.length]!);
+};
 
 export class Fight {
   fighters: Fighter[] = [];
@@ -30,6 +54,21 @@ export class Fight {
   shake = { amp: 0, t: 0 };
   protag: { f: Fighter; t: number } | null = null;
   players: Fighter[] = [];
+  /** the humans (the ones with combos and a life bar): only the first one of the original modes, every player of the VS / co-op modes */
+  humans: Fighter[] = [];
+  mode: FightMode = 'story';
+  difficulty: Difficulty = SOLO;
+  /** the fighter this screen belongs to */
+  local!: Fighter;
+  /** VS: who won (team number, 0 = draw) once the match is over */
+  result: { winner: number } | null = null;
+  /** sparks created since the last network snapshot (host) */
+  sparkLog: { char: string; id: number; x: number; y: number; z: number; facing: number }[] = [];
+  /** guest: this Fight only mirrors the host's snapshots, nothing is simulated here */
+  mirror = false;
+  activeEnemies = 1;
+  activeExtras = 0;
+  musicKey = '';
 
   level: LevelDef;
   waveIdx = 0;
@@ -46,32 +85,84 @@ export class Fight {
   count = 0;            // enemies defeated
   record = 0;
   /** Fight::v10 (00420cd0): the human's combo (hits, window, remaining). Window 1 s for the first hit, growing to
-   *  2.2 s at 20 hits (DAT_004f1218); the bar shows remaining/window. */
-  combo = { hits: 0, window: 0, left: 0 };
+   *  2.2 s at 20 hits (DAT_004f1218); the bar shows remaining/window. Kept per human (Fighter.combo); these are the local player's. */
+  get combo() { return this.local.combo; }
   /** Enemy shown in the bottom-right life bar: the last one the human hit (Fight +0x3d0). */
-  target: Fighter | null = null;
+  get target(): Fighter | null { return this.local.comboTarget; }
   timeLeft = 0;
   spawnTimer = 0;
   finished = false;
   won = false;
 
-  constructor(readonly levelKey: string) {
+  constructor(readonly levelKey: string, readonly opts?: FightOptions, mirror = false) {
     this.level = DB.levels[levelKey];
-    const team = DB.lists[this.level.playerTeam];
-    team.fighters.forEach((spec, i) => {
-      const desc = makeDesc(spec);
-      const human = i === 0;
-      const f = new Fighter(desc, this, { cpu: !human, team: team.team, color: desc.color, life: human ? undefined : parseInt(spec.attrs.lifeCPU ?? '', 10) || desc.lifeCPU });
-      f.usesPower = human;          // only the human gets a power meter (004205c0), starting at 250
-      f.power = human ? 250 : 0;
-      if (human) f.pad = new UserPad();
-      else { const p = new AIPad(); f.pad = p; f.ai = new AIController(f, p, desc.decisionsAI, desc.reflexesAI); f.evil = false; }
-      this.place(f, spec.yPos);
-      f.changeState(spec.state ?? desc.state);
+    this.mirror = mirror;
+    if (opts) {
+      this.mode = opts.mode;
+      this.difficulty = opts.difficulty;
+    }
+    if (mirror) return;
+    if (opts) this.buildPlayers(opts);
+    else {
+      const team = DB.lists[this.level.playerTeam];
+      team.fighters.forEach((spec, i) => {
+        const desc = makeDesc(spec);
+        const human = i === 0;
+        const f = new Fighter(desc, this, { cpu: !human, team: team.team, color: desc.color, life: human ? undefined : parseInt(spec.attrs.lifeCPU ?? '', 10) || desc.lifeCPU });
+        f.usesPower = human;          // only the human gets a power meter (004205c0), starting at 250
+        f.power = human ? 250 : 0;
+        if (human) f.pad = new UserPad();
+        else { const p = new AIPad(); f.pad = p; f.ai = new AIController(f, p, desc.decisionsAI, desc.reflexesAI); f.evil = false; }
+        this.place(f, spec.yPos);
+        f.changeState(spec.state ?? desc.state);
+        this.fighters.push(f);
+        this.players.push(f);
+      });
+      this.humans = [this.players[0]!];
+      this.local = this.players[0]!;
+    }
+    this.startWave(0);
+  }
+
+  /** VS / co-op: one human fighter per slot, each with the character it picked. */
+  private buildPlayers(o: FightOptions): void {
+    const used = new Map<string, number>();
+    const byTeam = new Map<number, number>();
+    o.players.forEach((slot) => {
+      const r = rosterOf(slot.char);
+      const desc = makeDesc({ type: r.key, nameIndex: 0, state: r.state, yPos: r.yPos, attrs: { lifeHuman: String(r.life) } });
+      const n = used.get(r.key) ?? 0;
+      used.set(r.key, n + 1);
+      const pal = Math.max(1, desc.numberOfPalettes);
+      desc.color = (Math.max(0, desc.color) + n) % pal;   // two players with the same character get different colors
+      const f = new Fighter(desc, this, { cpu: false, team: slot.team, color: desc.color, life: r.life });
+      f.usesPower = true;
+      f.power = 250;
+      f.slot = slot.id;
+      f.nick = slot.nick;
+      f.name = slot.nick;
+      if (slot.control === 'remote') { f.remote = new RemoteSource(); f.pad = new UserPad(f.remote); }
+      else f.pad = new UserPad(keyboard(slot.control));
+      const k = byTeam.get(slot.team) ?? 0;
+      byTeam.set(slot.team, k + 1);
+      this.placeSlot(f, o.mode, slot.team, k, r.yPos);
+      f.changeState(r.state ?? desc.state);
       this.fighters.push(f);
       this.players.push(f);
+      if (slot.id === o.localId) this.local = f;
     });
-    this.startWave(0);
+    this.humans = this.players.slice();
+    this.local ??= this.players[0]!;
+  }
+
+  /** Starting spots: VS teams face each other from the two sides; co-op players start together on the left. */
+  private placeSlot(f: Fighter, mode: string, team: number, k: number, y?: number): void {
+    const ar = this.area;
+    const z = ar.z0 + 20 + ((k * 47 + (team === 2 ? 23 : 0)) % (ar.d - 40));
+    let x: number;
+    if (mode === 'vs') { x = team === 1 ? 50 + (k % 2) * 28 : ar.w - 50 - (k % 2) * 28; f.facing = team === 1 ? 1 : -1; }
+    else { x = 60 + (k % 2) * 30; f.facing = 1; }
+    f.pos = { x, y: y ?? 0, z };
   }
 
   // ------------------------------------------------------------------ waves
@@ -79,25 +170,57 @@ export class Fight {
     this.waveIdx = i;
     const lw = this.level.waves[i];
     this.wave = DB.waves[lw.name];
-    this.queue = DB.lists[this.wave.list]?.fighters ?? [];
+    const w = this.wave;
+    const d = this.difficulty;
+    // co-op: the more players, the more enemies (on screen and per wave); bosses and their extras scale too
+    this.queue = DB.lists[w.list]?.fighters ?? [];
+    if (this.mode === 'coop' && w.mode !== 'BossMode' && w.mode !== 'SurvivalMode' && w.mode !== 'TimeMode') this.queue = scaleList(this.queue, d.count);
+    // on screen at once the original number scaled up, but never more than the arena can hold
+    this.activeEnemies = this.mode === 'coop' ? Math.max(w.activeEnemies, Math.min(MAX_ON_SCREEN, Math.ceil(w.activeEnemies * d.count - 1e-9))) : w.activeEnemies;
+    this.activeExtras = this.mode === 'coop' ? Math.max(w.activeExtras, Math.min(MAX_EXTRAS, Math.ceil(w.activeExtras * d.count - 1e-9))) : w.activeExtras;
     this.queuePos = 0;
-    this.extrasQueue = this.wave.listExtras ? DB.lists[this.wave.listExtras]?.fighters ?? [] : [];
+    this.extrasQueue = w.listExtras ? DB.lists[w.listExtras]?.fighters ?? [] : [];
     this.extrasPos = 0;
     this.boss = null;
+    if (this.mode === 'coop' && i > 0) this.reviveAndHeal();
     this.timeLeft = this.wave.time;
     this.phase = 'intro';
     this.phaseT = 0;
     this.banner = lw.initialTextKey;
     this.bannerT = 2;
     const music = lw.music ?? this.level.music;
-    if (music && music !== 'NONE') playMusic(music);
+    if (music && music !== 'NONE') { playMusic(music); this.musicKey = music; }
+  }
+
+  /** Between waves of a co-op match: fallen players come back with half their life, the others recover a quarter. */
+  private reviveAndHeal(): void {
+    for (const p of this.players) {
+      if (p.dead) {
+        const st = p.stateOf('Stand');
+        p.dead = false;
+        p.hidden = false;
+        p.life = Math.ceil(p.lifeMax * 0.5);
+        p.power = Math.max(p.power, 100);
+        this.placeSlot(p, 'coop', p.team, Math.max(0, p.slot), p.desc.key === 'Bat' ? 30 : 0);
+        p.vel = { x: 0, y: 0, z: 0 };
+        p.pending = null;
+        if (st) p.enter('Stand', st);
+        p.invTimed = true;
+        p.invTime = 2;
+        p.blink = true;
+        this.addSpark(0, p.pos.x, 10, p.pos.z + 1, 1);
+      } else if (p.life > 0) {
+        p.life = Math.min(p.lifeMax, p.life + Math.ceil(p.lifeMax * 0.25));
+      }
+    }
   }
 
   private enemies(): Fighter[] { return this.fighters.filter((f) => !this.players.includes(f) && !f.dead); }
 
   private spawn(spec: FighterSpec, team: number, asBoss: boolean): Fighter {
     const desc = makeDesc(spec);
-    const life = parseInt(spec.attrs.lifeCPU ?? '', 10) || desc.lifeCPU;
+    const base = parseInt(spec.attrs.lifeCPU ?? '', 10) || desc.lifeCPU;
+    const life = this.mode === 'coop' ? Math.round(base * (asBoss ? this.difficulty.boss : this.difficulty.hp)) : base;
     const f = new Fighter(desc, this, { cpu: true, team, color: desc.color, life });
     const p = new AIPad();
     f.pad = p;
@@ -137,11 +260,19 @@ export class Fight {
     } else if (this.phase === 'fight') {
       const team = DB.lists[w.list]?.team ?? 2;
       const alive = this.enemies();
-      if (w.mode === 'BossMode') {
+      if (w.mode === 'VsMode') {
+        const left = new Set(this.players.filter((p) => !p.dead && p.life > 0).map((p) => p.team));
+        if (left.size <= 1) {
+          const winner = left.size ? [...left][0]! : 0;
+          this.result = { winner };
+          this.clear();
+          this.banner = winner ? `TEAM ${winner} WINS!` : 'DRAW!';
+        }
+      } else if (w.mode === 'BossMode') {
         if (!this.boss && this.queuePos < this.queue.length) this.boss = this.spawn(this.queue[this.queuePos++], team, true);
         const extras = alive.filter((f) => f !== this.boss);
         // a boss that is dying (life 0, death animation still playing) already ends the wave: no more extras fall in
-        if (this.boss && !this.boss.dead && this.boss.life > 0 && extras.length < w.activeExtras && this.extrasQueue.length) {
+        if (this.boss && !this.boss.dead && this.boss.life > 0 && extras.length < this.activeExtras && this.extrasQueue.length) {
           this.spawnTimer -= dt;
           if (this.spawnTimer <= 0) {
             this.spawn(this.extrasQueue[this.extrasPos % this.extrasQueue.length], team, false);
@@ -153,7 +284,7 @@ export class Fight {
       } else {
         const loops = w.mode === 'TimeMode' || w.mode === 'SurvivalMode';
         if (w.mode === 'TimeMode') this.timeLeft = Math.max(0, this.timeLeft - dt);
-        if (!(w.mode === 'TimeMode' && this.timeLeft <= 0) && alive.length < w.activeEnemies && (loops || this.queuePos < this.queue.length)) {
+        if (!(w.mode === 'TimeMode' && this.timeLeft <= 0) && alive.length < this.activeEnemies && (loops || this.queuePos < this.queue.length)) {
           this.spawnTimer -= dt;
           if (this.spawnTimer <= 0) {
             if (this.queuePos >= this.queue.length) this.queuePos = Math.min(w.loopIndex, this.queue.length - 1);
@@ -164,12 +295,14 @@ export class Fight {
         if (!loops && this.queuePos >= this.queue.length && alive.length === 0) this.clear();
         if (w.mode === 'TimeMode' && this.timeLeft <= 0) this.clear();
       }
-      if (this.players.some((p) => p.dead || p.life === 0 && p.stateName === 'Dead')) {
-        if (this.players.some((p) => p.dead)) this.fail();
-      }
+      if (this.mode === 'story') {
+        if (this.players.some((p) => p.dead || p.life === 0 && p.stateName === 'Dead')) {
+          if (this.players.some((p) => p.dead)) this.fail();
+        }
+      } else if (this.mode === 'coop' && this.phase === 'fight' && this.players.every((p) => p.dead)) this.fail();
     } else if (this.phase === 'cleared' && this.phaseT > 3) {
       if (this.waveIdx + 1 < this.level.waves.length) this.startWave(this.waveIdx + 1);
-      else { this.phase = 'done'; this.finished = true; this.won = true; }
+      else { this.phase = 'done'; this.finished = true; this.won = this.mode === 'vs' ? !!this.result && this.result.winner === this.local.team : true; }
     } else if (this.phase === 'failed' && this.phaseT > 4) {
       this.phase = 'done';
       this.finished = true;
@@ -256,6 +389,7 @@ export class Fight {
   addSpark(id: number, x: number, y: number, z: number, facing: number, char = 'Effects'): void {
     const a = CHARS[char].anims[String(id)];
     if (!a) return;
+    if (this.sparkLog.length < 64) this.sparkLog.push({ char, id, x, y, z, facing });
     this.sparks.push({ char, anim: a, id, frame: 0, t: 0, x, y, z, facing, done: false });
   }
 
@@ -274,6 +408,7 @@ export class Fight {
       if (f.dead) continue;
       if (f.ai && this.phase === 'fight' && f.life > 0) f.ai.update(fdt);
       f.update(fdt);
+      f.remote?.endTick();
     }
     this.collide();
     this.updateProjectiles(fdt);
@@ -287,11 +422,13 @@ export class Fight {
       }
     }
     this.sparks = this.sparks.filter((s) => !s.done);
-    if (this.combo.hits > 0) {
-      this.combo.left -= fdt;
-      if (this.combo.left <= 0) this.combo = { hits: 0, window: 0, left: 0 };
+    for (const h of this.humans) {
+      if (h.combo.hits > 0) {
+        h.combo.left -= fdt;
+        if (h.combo.left <= 0) h.combo = { hits: 0, window: 0, left: 0 };
+      }
+      if (h.comboTarget && h.comboTarget.dead) h.comboTarget = null;
     }
-    if (this.target && this.target.dead) this.target = null;
     for (const c of this.clones) c.life -= fdt;
     this.clones = this.clones.filter((c) => c.life > 0);
     this.fighters = this.fighters.filter((f) => !f.dead || this.players.includes(f));
@@ -387,7 +524,7 @@ export class Fight {
             if (!v.receiveHit(def, att)) {
               if (p.char) this.addSpark(def.spark, p.x, p.y, p.z + 1, att.facing);
               else { this.addSpark(10, p.x, p.y, p.z, 1, 'XaFx'); playSound('xa_wall'); }
-              if (p.owner === this.players[0]) this.comboHit(v);
+              if (this.humans.includes(p.owner)) this.comboHit(p.owner, v);
             }
           }
           done = true;
@@ -421,11 +558,11 @@ export class Fight {
     att.hitVictims.add(vic.uid);
     const blocked = vic.receiveHit(h, att);
     att.hitConnect(h, r, vic);
-    if (att === this.players[0] && vic.team !== att.team && !blocked) this.comboHit(vic);
+    if (this.humans.includes(att) && vic.team !== att.team && !blocked) this.comboHit(att, vic);
   }
-  private comboHit(vic: Fighter): void {
-    this.target = vic;
-    const c = this.combo;
+  private comboHit(att: Fighter, vic: Fighter): void {
+    att.comboTarget = vic;
+    const c = att.combo;
     c.hits++;
     c.window = c.hits === 1 ? 1 : 1 + 1.2 * Math.min(1, c.hits / 20);
     c.left = c.window;
@@ -453,6 +590,16 @@ export class Fight {
   }
 
   playerLife(): number { return this.players[0]?.life ?? 0; }
+
+  /** A player left the match (closed the tab): their fighter is gone. */
+  removePlayer(slot: number): void {
+    const p = this.players.find((q) => q.slot === slot);
+    if (!p || p.dead) return;
+    p.life = 0;
+    p.dead = true;
+    p.hidden = true;
+    p.remote?.release();
+  }
 }
 
 export { playSound };
