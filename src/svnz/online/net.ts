@@ -93,6 +93,7 @@ export class NetClient {
   private listeners = new Set<Listener>();
   private pingTimer = 0;
   private pingAt = 0;
+  private lastPong = 0;
   private session: StoredSession | null = null;
   private manual = false;
   private retryTimer = 0;
@@ -122,14 +123,20 @@ export class NetClient {
       const fail = (e: NetError) => { if (!settled) { settled = true; reject(e); } };
       ws.onopen = () => {
         this.connected = true;
+        this.lastPong = performance.now();
         ws.send(JSON.stringify(first));
         window.clearInterval(this.pingTimer);
-        this.pingTimer = window.setInterval(() => { this.pingAt = performance.now(); this.send({ t: 'ping', n: 1 }); }, 2000);
+        this.pingTimer = window.setInterval(() => {
+          // a connection that stopped answering (a proxy dropped it without telling anybody) is replaced by a fresh one with the same seat
+          if (performance.now() - this.lastPong > 7000) { this.forceReconnect(); return; }
+          this.pingAt = performance.now();
+          this.send({ t: 'ping', n: 1 });
+        }, 2000);
       };
       ws.onmessage = (ev) => {
         let m: ServerMessage;
         try { m = JSON.parse(String(ev.data)) as ServerMessage; } catch { return; }
-        if (m.t === 'pong') { this.rtt = Math.round(performance.now() - this.pingAt); return; }
+        if (m.t === 'pong') { this.lastPong = performance.now(); this.rtt = Math.round(this.lastPong - this.pingAt); return; }
         if (m.t === 'joined') {
           this.you = m.you; this.isHost = m.host; this.room = m.room;
           this.session = { code: m.room.code, sid: m.sid, name: m.room.players.find((p) => p.id === m.you)?.name ?? '', t: Date.now() };
@@ -167,6 +174,17 @@ export class NetClient {
     this.manual = false;
     this.session = s;
     return this.open({ t: 'resume', code: s.code, sid: s.sid });
+  }
+
+  /** Drops the current socket (even if it looks open) and comes back to the seat on a new one. */
+  forceReconnect(): void {
+    if (!this.session || this.manual || this.reconnecting) return;
+    const old = this.ws;
+    this.ws = null;
+    this.connected = false;
+    window.clearInterval(this.pingTimer);
+    if (old) { old.onclose = null; old.onerror = null; old.onmessage = null; try { old.close(); } catch { /* already gone */ } }
+    this.reconnect();
   }
 
   /** The socket dropped: try again with the session id (the server keeps the seat for a while). */

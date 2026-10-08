@@ -40,6 +40,8 @@ interface Match {
   lastM: number;
   sentAt: number;
   ended: boolean;
+  /** guest: when the silent-host watchdog last acted */
+  watchAt: number;
   escAt: number;
   note: string;
   noteT: number;
@@ -146,7 +148,7 @@ export class SvnzGame {
 
   private beginMatch(o: { kind: Match['kind']; mode: 'coop' | 'vs'; players: PlayerSlot[]; difficulty: Difficulty; localId: number; net?: NetClient; settings?: FightSettings }): void {
     this.endMatchCleanup();
-    const m: Match = { kind: o.kind, mode: o.mode, net: o.net, off: [], seq: 0, tick: 0, sounds: [], lastM: -1, sentAt: 0, ended: false, escAt: -9, note: '', noteT: 0 };
+    const m: Match = { kind: o.kind, mode: o.mode, net: o.net, off: [], seq: 0, tick: 0, sounds: [], lastM: -1, sentAt: 0, ended: false, watchAt: -99, escAt: -9, note: '', noteT: 0 };
     this.match = m;
     const key = o.mode === 'vs' ? VS_LEVEL : 'normalLevel';
     if (o.kind === 'guest') {
@@ -358,6 +360,8 @@ export class SvnzGame {
         m.net!.send({ t: 'in', d: m.sampler!.take() });
       }
       m.mirror!.step(dt);
+      // snapshots stopped while the socket looks fine: it may be half dead, so get a new one (the seat is kept by the session)
+      if (m.mirror!.lastSeq >= 0 && m.mirror!.silence > 3 && !m.net!.reconnecting && this.t - m.watchAt > 8) { m.watchAt = this.t; m.net!.forceReconnect(); }
       if (m.mirror!.silence > 12 && m.mirror!.lastSeq >= 0 && !m.net!.reconnecting) this.finishMatch('closed', null);
       return;
     }
