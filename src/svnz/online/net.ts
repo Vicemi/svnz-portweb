@@ -21,6 +21,7 @@ export type ServerMessage =
   | { t: 'ended'; d: unknown }
   | { t: 'left'; id: number }
   | { t: 'peer'; id: number; online: boolean }
+  | { t: 'rtc'; from: number; d: unknown }
   | { t: 'kicked' }
   | { t: 'replaced' }
   | { t: 'closed'; reason: string }
@@ -61,8 +62,8 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data;
 }
 
-/** The lobby needs a backend that speaks protocol 3 or newer (sessions, settings, colours). An old one would send rooms the page cannot read. */
-export const REQUIRED_PROTOCOL = 3;
+/** The lobby needs a backend that speaks protocol 4 or newer (sessions, settings, colours, direct links). An old one would send rooms the page cannot read. */
+export const REQUIRED_PROTOCOL = 4;
 export async function checkServer(): Promise<void> {
   const info = await api<{ protocol?: number }>('/api/info');
   if ((info.protocol ?? 1) < REQUIRED_PROTOCOL) throw new NetError('old_server', 'El servidor del backend está desactualizado: actualizá svnz-backend a la última versión (git pull, npm ci, npm run build y reiniciar).');

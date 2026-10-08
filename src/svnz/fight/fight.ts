@@ -54,6 +54,8 @@ export class Fight {
   private heartTimer = 10;
   private lastItem: ItemKey | null = null;
   settings: FightSettings = NO_POWERUPS;
+  /** online: round trip of this player's connection (ms) and whether it is a direct link (P2P) or through the server */
+  netInfo: { ping: number; p2p: boolean } | null = null;
   /** VS: lives each player starts with (0 = no lives, the original rules) */
   maxStocks = 0;
   clones: (Clone & { char: string })[] = [];

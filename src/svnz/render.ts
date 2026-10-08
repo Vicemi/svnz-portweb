@@ -317,7 +317,11 @@ export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
     g.fillRect(129, 33, Math.round(40 * Math.min(1, p.stars / 20)), 6);
   }
   drawText(g, 'small', plain(p.name, 16), 32, 4);
-  drawText(g, 'small', 'Press ENTER for Help', 200, 6);
+  if (fight.netInfo) {   // online: the ping instead of the help hint (the help is not available online)
+    const { ping, p2p } = fight.netInfo;
+    const txt = ping > 0 ? `Ping ${ping}ms ${p2p ? 'P2P' : 'RELAY'}` : `Ping ... ${p2p ? 'P2P' : 'RELAY'}`;
+    drawText(g, ping > 120 || ping === 0 ? 'smallOn' : 'small', txt, 240, 6, 'center');
+  } else drawText(g, 'small', 'Press ENTER for Help', 200, 6);
   if (fight.mode !== 'vs') {
     drawText(g, 'smallOn', `Record: ${fight.record}`, 452, 11, 'right');
     drawText(g, 'smallOn', `Count: ${fight.count}`, 452, 24, 'right');
