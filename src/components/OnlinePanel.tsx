@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MatchEnd, SvnzGame } from '../svnz/game';
 import { backend } from '../svnz/online/config';
-import { ITEMS, type ItemKey } from '../svnz/online/items';
-import { NetClient, NetError, checkRoom, createRoom, forgetSession, storedSession, type Mode, type RoomView, type ServerMessage } from '../svnz/online/net';
+import { ITEMS, defaultSettings, type ItemKey } from '../svnz/online/items';
+import { NetClient, NetError, checkRoom, checkServer, createRoom, forgetSession, storedSession, type Mode, type RoomView, type ServerMessage } from '../svnz/online/net';
 import { portrait } from '../svnz/online/portrait';
 import { SLOT_COLORS, rosterFor, rosterOf } from '../svnz/online/roster';
 import { difficultyOf } from '../svnz/online/scaling';
@@ -158,6 +158,7 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
   const create = async () => {
     setBusy(true); setError('');
     try {
+      await checkServer();
       const r = await createRoom(mode);
       const net = new NetClient();
       attach(net);
@@ -170,6 +171,7 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
     setBusy(true); setError('');
     try {
       const c = code.trim();
+      await checkServer();
       await checkRoom(c).catch((e) => { if (e instanceof NetError && e.code === 'not_found') throw e; });
       const net = new NetClient();
       attach(net);
@@ -200,7 +202,7 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
 
   const send = (m: Record<string, unknown>) => netRef.current?.send(m);
   const me = room?.players.find((p) => p.id === you);
-  const setItems = (items: ItemKey[], powerups = room!.settings.powerups, lives = room!.settings.lives) => send({ t: 'settings', powerups, items, lives });
+  const setItems = (items: ItemKey[], powerups = (room!.settings ?? defaultSettings(room!.mode)).powerups, lives = (room!.settings ?? defaultSettings(room!.mode)).lives) => send({ t: 'settings', powerups, items, lives });
 
   // ---------------------------------------------------------------- local co-op
   if (kind === 'localCoop') {
@@ -286,7 +288,7 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
   const canStart = host && allReady && allOnline && enough;
   const hint = !allOnline ? 'Un jugador perdió la conexión' : !allReady ? 'Faltan jugadores por marcar «Listo»' : !enough ? 'El VS necesita al menos 2 jugadores' : '';
   const d = room.difficulty;
-  const st = room.settings;
+  const st = room.settings ?? defaultSettings(room.mode);
   const link_ = `${location.origin}${location.pathname}?room=${room.code}`;
   const copy = async (text: string) => { try { await navigator.clipboard.writeText(text); setCopied(true); window.setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ } };
   const slots = Array.from({ length: room.max }, (_, i) => room.players[i]);
