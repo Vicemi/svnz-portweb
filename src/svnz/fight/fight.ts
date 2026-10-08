@@ -6,6 +6,7 @@ import { AIPad, RemoteSource, UserPad, keyboard } from './pad';
 import { AIController } from './ai';
 import { playMusic, playSound } from '../core/audio';
 import { rosterOf } from '../online/roster';
+import { paletteOf } from '../online/variants';
 import { ITEMS, NO_POWERUPS, type FightSettings, type ItemKey } from '../online/items';
 import { SOLO, type Difficulty } from '../online/scaling';
 
@@ -21,7 +22,7 @@ export interface Item { x: number; z: number; t: number; type: ItemKey }
 export type Phase = 'intro' | 'ready' | 'fight' | 'cleared' | 'failed' | 'done';
 
 /** One human of a VS / co-op match (local keyboard, second keyboard layout, or a remote player on the network). */
-export interface PlayerSlot { id: number; nick: string; char: string; team: number; control: 'p1' | 'p2' | 'remote' }
+export interface PlayerSlot { id: number; nick: string; char: string; team: number; control: 'p1' | 'p2' | 'remote'; /** colour variant picked in the lobby */ variant?: number }
 export interface FightOptions {
   mode: 'coop' | 'vs';
   players: PlayerSlot[];
@@ -49,7 +50,9 @@ export class Fight {
   sparks: Spark[] = [];
   projectiles: Projectile[] = [];
   items: Item[] = [];
-  private itemTimer = 5;
+  private itemTimer = 14 + Math.random() * 10;
+  private heartTimer = 10;
+  private lastItem: ItemKey | null = null;
   settings: FightSettings = NO_POWERUPS;
   /** VS: lives each player starts with (0 = no lives, the original rules) */
   maxStocks = 0;
@@ -142,7 +145,8 @@ export class Fight {
       const n = used.get(r.key) ?? 0;
       used.set(r.key, n + 1);
       const pal = Math.max(1, desc.numberOfPalettes);
-      desc.color = (Math.max(0, desc.color) + n) % pal;   // two players with the same character get different colors
+      // the colour picked in the lobby; without one, two players with the same character still get different colors
+      desc.color = slot.variant !== undefined ? paletteOf(r.key, slot.variant) : (Math.max(0, desc.color) + n) % pal;
       const f = new Fighter(desc, this, { cpu: false, team: slot.team, color: desc.color, life: r.life });
       f.usesPower = true;
       f.power = 250;
@@ -523,24 +527,34 @@ export class Fight {
       }
       return;
     }
+    // Rhythm: power-ups are rare, like in Smash. One lies on the map at a time and the next one comes 20 to 36 s after the previous one
+    // appeared (the first one after 14 to 24 s), so nobody has advantages all the time. The heart of the co-op has its own, shorter clock
+    // and only runs while somebody is down.
+    const down = this.mode === 'coop' && this.settings.items.includes('heart') && this.players.some((p) => p.dead && !p.out);
+    const heartOnMap = this.items.some((i) => i.type === 'heart');
+    if (down && !heartOnMap) {
+      this.heartTimer -= dt;
+      if (this.heartTimer <= 0) {
+        const q = this.randomPos(users[0] ?? this.players[0]!);
+        this.items.push({ x: q.x, z: q.z, t: 18, type: 'heart' });
+        this.heartTimer = 12 + Math.random() * 10;
+      }
+    } else if (!down) this.heartTimer = 8 + Math.random() * 6;
     this.itemTimer -= dt;
-    if (this.itemTimer > 0 || this.items.length >= 2) return;
+    if (this.itemTimer > 0 || this.items.some((i) => i.type !== 'heart')) return;
     const type = this.pickItem();
-    this.itemTimer = 7 + Math.random() * 6;
+    this.itemTimer = 20 + Math.random() * 16;
     if (!type) return;
     const q = this.randomPos(users[0] ?? this.players[0]!);
-    this.items.push({ x: q.x, z: q.z, t: 16, type });
+    this.items.push({ x: q.x, z: q.z, t: 14, type });
+    this.lastItem = type;
   }
 
-  /** Which power-up appears next: any enabled one that is not already lying around; the heart (co-op) only when somebody is down. */
+  /** Which power-up appears next: any enabled one except the heart (it has its own clock) and the one that came last. */
   private pickItem(): ItemKey | null {
-    const onMap = new Set(this.items.map((i) => i.type));
-    const down = this.mode === 'coop' && this.players.some((p) => p.dead && !p.out);
-    const pool = this.settings.items.filter((k) => !onMap.has(k) && (k !== 'heart' || down) && (k !== 'heart' || this.mode === 'coop'));
-    if (pool.length === 0) return null;
-    if (down && pool.includes('heart') && Math.random() < 0.55) return 'heart';
-    const rest = pool.filter((k) => k !== 'heart');
-    const from = rest.length ? rest : pool;
+    const pool = this.settings.items.filter((k) => k !== 'heart' && k !== this.lastItem);
+    const from = pool.length ? pool : this.settings.items.filter((k) => k !== 'heart');
+    if (from.length === 0) return null;
     return from[Math.floor(Math.random() * from.length)]!;
   }
 

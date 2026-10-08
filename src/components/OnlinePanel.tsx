@@ -6,14 +6,15 @@ import { NetClient, NetError, checkRoom, createRoom, forgetSession, storedSessio
 import { portrait } from '../svnz/online/portrait';
 import { SLOT_COLORS, rosterFor, rosterOf } from '../svnz/online/roster';
 import { difficultyOf } from '../svnz/online/scaling';
+import { paletteOf, variantCount } from '../svnz/online/variants';
 
 export type PanelKind = 'localCoop' | 'onlineCoop' | 'onlineVs' | 'join' | 'resume';
 
 const CODE_CHARS = /[^ABCDEFGHJKMNPQRSTUVWXYZ23456789]/g;
 const cleanNick = (s: string) => s.replace(/[^A-Za-z0-9 _.-]/g, '').slice(0, 10);
 
-function Portrait({ char, size = 72 }: { char: string; size?: number }) {
-  const src = useMemo(() => portrait(char), [char]);
+function Portrait({ char, variant, size = 72 }: { char: string; variant?: number; size?: number }) {
+  const src = useMemo(() => portrait(char, variant === undefined ? -1 : paletteOf(char, variant)), [char, variant]);
   return src ? <img className="ol-portrait" src={src} width={size} height={size} alt="" draggable={false} /> : <span className="ol-portrait" style={{ width: size, height: size }} />;
 }
 
@@ -22,18 +23,40 @@ function ItemIcon({ id, size = 2 }: { id: number; size?: number }) {
   return <span className="ol-ico" style={{ width: 22 * size, height: 22 * size, backgroundSize: `${88 * size}px ${144 * size}px`, backgroundPosition: `0 -${(id - 1) * 22 * size}px` }} aria-hidden />;
 }
 
-function CharPicker({ mode, value, onPick, label, color }: { mode: Mode; value: string; onPick: (c: string) => void; label?: string; color?: string }) {
+/** Character grid + the colour variants of the chosen one (up to 4). Colours another player of the room already has are locked. */
+function CharPicker({ mode, value, variant, taken, onPick, onVariant, label, color }: {
+  mode: Mode; value: string; variant: number; taken: { char: string; variant: number; name: string }[];
+  onPick: (c: string) => void; onVariant: (v: number) => void; label?: string; color?: string;
+}) {
   const r = rosterOf(value);
+  const n = variantCount(value);
+  const owner = (char: string, v: number) => taken.find((t) => t.char === char && t.variant === v)?.name;
   return (
     <div className="ol-picker">
       {label && <div className="ol-label" style={{ color }}>{label}</div>}
       <div className="ol-chars" role="radiogroup" aria-label="Personaje">
-        {rosterFor(mode).map((c) => (
-          <button key={c.key} role="radio" aria-checked={c.key === value} className={'ol-char' + (c.key === value ? ' on' : '')} onClick={() => onPick(c.key)} title={c.name}>
-            <Portrait char={c.key} size={64} />
-            <span>{c.name}</span>
-          </button>
-        ))}
+        {rosterFor(mode).map((c) => {
+          const full = c.key !== value && Array.from({ length: variantCount(c.key) }, (_, v) => owner(c.key, v)).every(Boolean);
+          return (
+            <button key={c.key} role="radio" aria-checked={c.key === value} disabled={full} className={'ol-char' + (c.key === value ? ' on' : '')} onClick={() => onPick(c.key)} title={full ? 'Todos sus colores están ocupados' : c.name}>
+              <Portrait char={c.key} variant={c.key === value ? variant : undefined} size={56} />
+              <span>{c.name}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="ol-label">Color</div>
+      <div className="ol-variants" role="radiogroup" aria-label="Color">
+        {Array.from({ length: n }, (_, v) => {
+          const who = owner(value, v);
+          return (
+            <button key={v} role="radio" aria-checked={v === variant} disabled={!!who} className={'ol-var' + (v === variant ? ' on' : '') + (who ? ' locked' : '')} onClick={() => onVariant(v)} title={who ? `Lo tiene ${who}` : `Color ${v + 1}`}>
+              <Portrait char={value} variant={v} size={44} />
+              {who && <em>{who.slice(0, 6)}</em>}
+            </button>
+          );
+        })}
+        {n === 1 && <span className="ol-note">Este personaje tiene un solo color.</span>}
       </div>
       <div className="ol-info">
         <b>{r.name}</b> · {r.style} · Vida {r.life} · Velocidad {r.speed}{r.vsOnly ? ' · Solo VS' : ''}
@@ -66,6 +89,7 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
   const [playing, setPlaying] = useState(false);
   const [result, setResult] = useState('');
   const [chars, setChars] = useState<[string, string]>(['Mina', 'DemonNinja']);
+  const [vars, setVars] = useState<[number, number]>([0, 0]);
   const [ping, setPing] = useState(0);
   const [copied, setCopied] = useState(false);
   const [link, setLink] = useState<'ok' | 'lost'>('ok');
@@ -163,8 +187,8 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
     const net = new NetClient();
     attach(net);
     net.resume(s).then(async (v) => {
+      await game.whenReady();   // the lobby draws the characters' pictures: the sprites must be loaded first
       setRoom(v); setYou(net.you); setHost(net.isHost); setBusy(false);
-      await game.whenReady();
       if (v.status === 'playing') {
         if (net.isHost) net.send({ t: 'end', d: { aborted: true } });   // the match lived in this page, which was reloaded: it cannot go on
         else { playingRef.current = true; setPlaying(true); game.startOnline(net, v, v.difficulty, net.you); }
@@ -181,14 +205,22 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
   // ---------------------------------------------------------------- local co-op
   if (kind === 'localCoop') {
     const d = difficultyOf(chars);
+    const free = (char: string, other: { char: string; v: number }) => Array.from({ length: variantCount(char) }, (_, v) => v).find((v) => !(other.char === char && other.v === v)) ?? 0;
+    const pick = (who: 0 | 1, c: string) => {
+      const o = who === 0 ? { char: chars[1], v: vars[1] } : { char: chars[0], v: vars[0] };
+      const nc: [string, string] = who === 0 ? [c, chars[1]] : [chars[0], c];
+      const nv: [number, number] = who === 0 ? [free(c, o), vars[1]] : [vars[0], free(c, o)];
+      setChars(nc); setVars(nv);
+    };
+    const takenBy = (who: 0 | 1) => (who === 0 ? [{ char: chars[1], variant: vars[1], name: 'J2' }] : [{ char: chars[0], variant: vars[0], name: 'J1' }]);
     return (
       <div className="ol-overlay" role="dialog" aria-label="Coop local">
         <div className="ol-card">
           <h1>Coop local</h1>
           <p className="ol-sub">Dos jugadores en el mismo teclado. Pasen el juego juntos: con dos jugadores hay más enemigos (×{d.count}), con {Math.round((d.hp - 1) * 100)}% más de vida.</p>
           <div className="ol-two">
-            <CharPicker mode="coop" value={chars[0]} onPick={(c) => setChars([c, chars[1]])} label="Jugador 1" color={SLOT_COLORS[0]} />
-            <CharPicker mode="coop" value={chars[1]} onPick={(c) => setChars([chars[0], c])} label="Jugador 2" color={SLOT_COLORS[1]} />
+            <CharPicker mode="coop" value={chars[0]} variant={vars[0]} taken={takenBy(0)} onPick={(c) => pick(0, c)} onVariant={(v) => setVars([v, vars[1]])} label="Jugador 1" color={SLOT_COLORS[0]} />
+            <CharPicker mode="coop" value={chars[1]} variant={vars[1]} taken={takenBy(1)} onPick={(c) => pick(1, c)} onVariant={(v) => setVars([vars[0], v])} label="Jugador 2" color={SLOT_COLORS[1]} />
           </div>
           <div className="ol-keys">
             <div><b style={{ color: SLOT_COLORS[0] }}>J1</b> Flechas mover · Q rápido · W fuerte · E salto · A especial · S defensa · D dash</div>
@@ -196,7 +228,7 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
           </div>
           <div className="ol-actions">
             <button className="ol-btn" onClick={onClose}>Atrás</button>
-            <button className="ol-btn primary" onClick={() => { onClose(); game.startLocalCoop(chars, ['P1', 'P2']); }}>¡A pelear!</button>
+            <button className="ol-btn primary" onClick={() => { onClose(); game.startLocalCoop(chars, ['P1', 'P2'], vars); }}>¡A pelear!</button>
           </div>
         </div>
       </div>
@@ -287,7 +319,7 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
         <div className="ol-slots">
           {slots.map((p, i) => p ? (
             <div key={p.id} className={'ol-slot' + (p.id === you ? ' me' : '') + (p.online ? '' : ' off')} style={{ borderColor: SLOT_COLORS[p.id % SLOT_COLORS.length] }}>
-              <Portrait char={p.char} size={64} />
+              <Portrait char={p.char} variant={p.variant} size={56} />
               <div className="ol-slot-t">
                 <b>{p.name}{p.host ? ' ★' : ''}</b>
                 <span>{rosterOf(p.char).name}</span>
@@ -299,7 +331,7 @@ export default function OnlinePanel({ game, kind, initialCode, onClose }: { game
           ) : <div key={'e' + i} className="ol-slot empty">Esperando…</div>)}
         </div>
 
-        {me && <CharPicker mode={room.mode} value={me.char} onPick={(c) => send({ t: 'char', char: c })} label="Tu personaje" color={SLOT_COLORS[me.id % SLOT_COLORS.length]} />}
+        {me && <CharPicker mode={room.mode} value={me.char} variant={me.variant} taken={others.map((o) => ({ char: o.char, variant: o.variant, name: o.name }))} onPick={(c) => send({ t: 'char', char: c })} onVariant={(v) => send({ t: 'variant', v })} label="Tu personaje" color={SLOT_COLORS[me.id % SLOT_COLORS.length]} />}
 
         <div className="ol-settings">
           <div className="ol-label">Power-ups {host ? '' : '(los elige el anfitrión)'}</div>

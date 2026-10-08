@@ -129,10 +129,10 @@ export class SvnzGame {
 
   // ------------------------------------------------------------------ VS / co-op matches
   /** Co-op on one keyboard, 2 players: player 1 arrows + Q W E A S D, player 2 I J K L + U O P , N M. */
-  startLocalCoop(chars: [string, string], nicks: [string, string] = ['P1', 'P2']): void {
+  startLocalCoop(chars: [string, string], nicks: [string, string] = ['P1', 'P2'], variants: [number, number] = [0, 1]): void {
     const players: PlayerSlot[] = [
-      { id: 0, nick: nicks[0], char: chars[0], team: 1, control: 'p1' },
-      { id: 1, nick: nicks[1], char: chars[1], team: 1, control: 'p2' },
+      { id: 0, nick: nicks[0], char: chars[0], team: 1, control: 'p1', variant: variants[0] },
+      { id: 1, nick: nicks[1], char: chars[1], team: 1, control: 'p2', variant: variants[1] },
     ];
     this.beginMatch({ kind: 'local', mode: 'coop', players, difficulty: difficultyOf(chars), localId: 0 });
   }
@@ -140,7 +140,7 @@ export class SvnzGame {
   /** The lobby said "start": the host simulates, the guests mirror. */
   startOnline(net: NetClient, room: RoomView, difficulty: Difficulty, you: number): void {
     // VS is a free-for-all: every player is their own team (the server numbers them id + 1)
-    const players: PlayerSlot[] = room.players.map((p) => ({ id: p.id, nick: p.name, char: p.char, team: room.mode === 'vs' ? p.team : 1, control: p.id === you ? 'p1' : 'remote' }));
+    const players: PlayerSlot[] = room.players.map((p) => ({ id: p.id, nick: p.name, char: p.char, team: room.mode === 'vs' ? p.team : 1, control: p.id === you ? 'p1' : 'remote', variant: p.variant }));
     this.beginMatch({ kind: net.isHost ? 'host' : 'guest', mode: room.mode, players, difficulty, localId: you, net, settings: room.settings });
   }
 

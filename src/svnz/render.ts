@@ -108,8 +108,18 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
     const an = CHARS[ch].anims[String(p.anim)];
     // the ninja star spins and grows from a small one while it leaves the hand
     const fr = p.char ? an?.frames[Math.floor(p.t * 20) % an.frames.length] : an?.frames[0];
-    const k = p.char ? 0.5 + 0.5 * Math.min(1, p.t / 0.15) : 1;
-    if (fr) items.push({ z: p.z + 0.5, draw: () => drawFrame(g, ch, 0, fr, sx, sy, p.vx >= 0 ? 1 : -1, 1, k) });
+    const k = p.char ? 0.7 + 0.5 * Math.min(1, p.t / 0.15) : 1;
+    const [shx, shy] = screenOf(p.x, 0, p.z);
+    if (fr) {
+      items.push({ z: p.z + 0.5, draw: () => {
+        // a shadow on the floor (so its path in depth can be read) and a short fading trail: shots must be seen to be dodged
+        g.fillStyle = 'rgba(0,0,0,0.4)';
+        g.fillRect(shx - 5, shy - 1, 10, 3);
+        const dir = p.vx >= 0 ? 1 : -1;
+        for (let t = 3; t >= 1; t--) drawFrame(g, ch, 0, fr, sx - dir * t * 7, sy - Math.sign(p.vy) * t, dir, 0.16 * (4 - t), k);
+        drawFrame(g, ch, 0, fr, sx, sy, dir, 1, k);
+      } });
+    }
   }
   // power-ups on the map: the icon bobbing over a shadow with a glint sweeping over it; it blinks when about to vanish
   for (const it of fight.items) {
@@ -135,6 +145,17 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
 
 /** The sheets only have the printable ASCII range: anything else is dropped; long names are cut. */
 const plain = (s: string, max: number): string => s.replace(/[^\x21-\x7e ]/g, '').trim().slice(0, max);
+
+/** Power-ups a fighter has right now, with the seconds left and the full duration. */
+function activeBuffs(f: Fighter): { id: number; left: number; max: number }[] {
+  const out: { id: number; left: number; max: number }[] = [];
+  if (f.stars > 0) out.push({ id: 1, left: f.stars, max: 20 });
+  if (f.buff.speed > 0) out.push({ id: 3, left: f.buff.speed, max: 12 });
+  if (f.buff.shield > 0) out.push({ id: 4, left: f.buff.shield, max: 10 });
+  if (f.buff.power > 0) out.push({ id: 5, left: f.buff.power, max: 12 });
+  if (f.buff.fang > 0) out.push({ id: 6, left: f.buff.fang, max: 12 });
+  return out;
+}
 
 /** Small power-up icon (12x12) at (x, y). */
 function drawIcon(g: CanvasRenderingContext2D, id: number, x: number, y: number, alpha = 1): void {
@@ -166,15 +187,10 @@ function drawNameplate(g: CanvasRenderingContext2D, f: Fighter, fight: Fight, sx
   const body = f.rects('body');
   if (body.length) top = Math.min(...body.map((r) => r[1] + CAM_Y)) - 2;
   const col = SLOT_COLORS[f.slot % SLOT_COLORS.length]!;
-  const buffs: number[] = [];
-  if (f.stars > 0) buffs.push(1);
-  if (f.buff.speed > 0) buffs.push(3);
-  if (f.buff.shield > 0) buffs.push(4);
-  if (f.buff.power > 0) buffs.push(5);
-  if (f.buff.fang > 0) buffs.push(6);
+  const buffs = activeBuffs(f);
   const coop = fight.mode === 'coop';
   const mine = f.slot === fight.local.slot;
-  const need = (coop ? 6 : 0) + 10 + (buffs.length ? 13 : 0) + (mine ? 9 : 0);
+  const need = (coop ? 6 : 0) + 10 + (buffs.length ? 15 : 0) + (mine ? 9 : 0);
   let y = Math.max(need + 1, top);          // keep it on the screen
   if (coop) {
     const w = 30, x = Math.round(sx - w / 2);
@@ -193,8 +209,15 @@ function drawNameplate(g: CanvasRenderingContext2D, f: Fighter, fight: Fight, sx
   g.fillRect(Math.round(sx - w / 2) - 2, y + 9, w + 4, 1);
   drawText(g, mine ? 'smallOn' : 'small', nick, sx, y, 'center');
   if (buffs.length) {
-    y -= 13;
-    buffs.forEach((id, i) => drawIcon(g, id, Math.round(sx - (buffs.length * 13 - 1) / 2) + i * 13, y));
+    y -= 15;
+    buffs.forEach((b, i) => {
+      const x = Math.round(sx - (buffs.length * 13 - 1) / 2) + i * 13;
+      drawIcon(g, b.id, x, y, b.left / b.max < 0.25 && Math.floor(fight.time * 6) % 2 === 0 ? 0.35 : 1);   // blinks when about to run out
+      g.fillStyle = '#000';
+      g.fillRect(x, y + 12, 12, 2);
+      g.fillStyle = '#f8f8f8';
+      g.fillRect(x, y + 12, Math.max(1, Math.round(12 * Math.min(1, b.left / b.max))), 1);
+    });
   }
   if (mine) {
     y -= 8 - Math.round(Math.sin(fight.time * 6));
@@ -273,7 +296,18 @@ export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
     g.drawImage(full, 0, 16, ow, oh, 49, 35, ow, oh);
   }
   if (p.power >= 300 && fx && Math.floor(fight.time * 6) % 2 === 0) g.drawImage(fx, 8, 12, 88, 20, 18, 24, 88, 20);
-  if (p.stars > 0) {
+  if (fight.mode !== 'story') {
+    // online modes: every power-up in use with its clock, under the power bar
+    activeBuffs(p).forEach((b, i) => {
+      const y = 48 + i * 14;
+      drawIcon(g, b.id, 10, y);
+      g.fillStyle = '#140c20';
+      g.fillRect(25, y + 4, 52, 5);
+      g.fillStyle = b.left / b.max < 0.25 ? '#e83838' : '#f8c028';
+      g.fillRect(26, y + 5, Math.round(50 * Math.min(1, b.left / b.max)), 3);
+      drawText(g, 'small', `${Math.ceil(b.left)}`, 80, y + 2);
+    });
+  } else if (p.stars > 0) {
     // ninja-star power-up: icon + remaining time under the power bar
     const an = CHARS.NinjaStar.anims['1'];
     drawFrame(g, 'NinjaStar', 0, an.frames[Math.floor(fight.time * 12) % an.frames.length], 118, 36, 1);

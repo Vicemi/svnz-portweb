@@ -9,7 +9,7 @@ import type { FightSettings } from './items';
 import type { Difficulty } from './scaling';
 
 export type Mode = 'coop' | 'vs';
-export interface RoomPlayer { id: number; name: string; char: string; team: number; ready: boolean; host: boolean; online: boolean }
+export interface RoomPlayer { id: number; name: string; char: string; variant: number; team: number; ready: boolean; host: boolean; online: boolean }
 export interface RoomView { code: string; mode: Mode; status: 'lobby' | 'playing'; hostId: number | null; max: number; settings: FightSettings; players: RoomPlayer[]; difficulty: Difficulty }
 
 export type ServerMessage =
@@ -44,6 +44,7 @@ const ERRORS: Record<string, string> = {
   banned: 'El anfitrión te sacó de esta sala.',
   limit: 'El servidor está lleno, probá más tarde.',
   bad_session: 'La sesión venció.',
+  taken: 'Ese color ya lo tiene otro jugador.',
   invalid_request: 'Solicitud inválida.',
 };
 export const errorText = (code: string, fallback = 'Error de conexión'): string => ERRORS[code] ?? fallback;

@@ -1,7 +1,7 @@
 // Little pictures of the characters for the lobby: the first frame of their standing animation, drawn from the game's own sprite sheets.
 import { img } from '../core/assets';
 import { CHARS, FSM } from '../fight/fighter';
-import { makeDesc } from '../fight/data';
+import { DB, makeDesc } from '../fight/data';
 import { drawFrame } from '../render';
 import { rosterOf } from './roster';
 
@@ -12,6 +12,7 @@ export function portrait(charKey: string, palette = -1): string {
   const id = `${charKey}:${palette}`;
   const hit = cache.get(id);
   if (hit) return hit;
+  if (!DB.chars[charKey]) return '';   // data not loaded yet
   const r = rosterOf(charKey);
   const desc = makeDesc({ type: r.key, nameIndex: 0, attrs: {} });
   const sheetIdx = palette >= 0 ? palette % Math.max(1, desc.numberOfPalettes) : Math.max(0, desc.color);
