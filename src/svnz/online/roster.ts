@@ -14,6 +14,11 @@ export interface RosterEntry {
   /** starting state / height for characters that do not start standing */
   state?: string;
   yPos?: number;
+  /** the XA characters: only selectable in VS (they have no place in the story co-op) */
+  vsOnly?: boolean;
+  /** balance for VS: damage dealt multiplier and no armor (so they cannot be an unbeatable counter) */
+  dmg?: number;
+  noArmor?: boolean;
 }
 
 export const ROSTER: RosterEntry[] = [
@@ -31,8 +36,14 @@ export const ROSTER: RosterEntry[] = [
     moves: ['Armadura: recibe la mitad del dano', 'Golpe fuerte', 'Body Slam: salta y cae con todo su peso'] },
   { key: 'Dracula', name: 'Dracula', life: 300, threat: 0.12, speed: 'Rapida', style: 'Vampiro',
     moves: ['Ataque combinado', 'Desplazamiento rapido', 'Patada voladora'] },
+  { key: 'XaHero', name: 'XA Hero', life: 200, threat: 0, speed: 'Media', style: 'Tirador', vsOnly: true, dmg: 0.8,
+    moves: ['Bola de energía (Q)', 'Salto y doble salto (E)', 'Escudo frontal (W): frena los golpes débiles', 'Menos vida y daño que el resto (equilibrado para VS)'] },
+  { key: 'XaBoss', name: 'XA Boss', life: 260, threat: 0, speed: 'Lenta', style: 'Cañón', vsOnly: true, dmg: 0.65, noArmor: true,
+    moves: ['Cañón de 5 disparos en abanico (Q)', 'Lento y grande', 'Sin armadura y con menos daño que el jefe original (equilibrado para VS)'] },
 ];
 
+/** Characters that can be picked in a mode (the XA ones only in VS). */
+export const rosterFor = (mode: 'coop' | 'vs'): RosterEntry[] => ROSTER.filter((r) => mode === 'vs' || !r.vsOnly);
 export const rosterOf = (key: string): RosterEntry => ROSTER.find((r) => r.key === key) ?? ROSTER[0]!;
 
 /** Colors of the player markers (P1..P8) drawn under the names and in the life lists. */

@@ -99,10 +99,25 @@ import SvnzGameView from '../components/SvnzGame.tsx';
   .ol-slot-t b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ol-slot-t span { font-size: 0.75rem; color: #cdbbe8; }
   .ol-team.t1 { color: #ff8a8a !important; } .ol-team.t2 { color: #8ab8ff !important; }
-  .ol-ok { font: 400 0.55rem 'Press Start 2P', monospace; color: #7d6a9c; } .ol-ok.on { color: #5be07a; }
+  .ol-ok { position: absolute; right: 6px; bottom: 4px; font: 400 0.55rem 'Press Start 2P', monospace; color: #7d6a9c; } .ol-ok.on { color: #5be07a; }
   .ol-teams { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.6rem; font: 400 0.65rem 'Press Start 2P', monospace; }
   .ol-diff { margin-top: 0.7rem; padding: 0.4rem 0.6rem; background: #0d0718; border-radius: 0.4rem; font-size: 0.78rem; color: #cdbbe8; }
   .ol-setup pre { background: #0d0718; padding: 0.7rem; border-radius: 0.4rem; overflow: auto; font-size: 0.78rem; }
   .ol-setup code { color: #ffd84a; }
   @media (max-width: 40rem) { .ol-two { grid-template-columns: 1fr; } .ol-card { padding: 0.8rem; } .ol-code { font-size: 1.4rem; } }
+
+  .ol-ico { display: inline-block; background-image: url('/assets/bonus/powerups.png'); image-rendering: pixelated; background-repeat: no-repeat; flex: none; }
+  .ol-settings { margin-top: 0.8rem; padding: 0.6rem 0.7rem; background: #0d0718; border-radius: 0.5rem; }
+  .ol-switch { display: flex; align-items: center; gap: 0.5rem; margin: 0.2rem 0 0.6rem; cursor: pointer; }
+  .ol-switch input { width: 1.1rem; height: 1.1rem; accent-color: #ffd84a; }
+  .ol-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0.4rem; }
+  .ol-items.off { opacity: 0.45; }
+  .ol-item { display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'i n' 'i b'; gap: 0 0.5rem; align-items: center; text-align: left; padding: 0.35rem 0.5rem; background: #1c1030; border: 2px solid #3d2a63; border-radius: 0.4rem; color: #e9dcff; cursor: pointer; font: 400 0.75rem system-ui, sans-serif; opacity: 0.55; }
+  .ol-item .ol-ico { grid-area: i; } .ol-item b { grid-area: n; font-size: 0.8rem; } .ol-item small { grid-area: b; color: #cdbbe8; line-height: 1.25; }
+  .ol-item.on { opacity: 1; border-color: #ffd84a; background: #2c1a50; }
+  .ol-item:disabled { cursor: default; }
+  .ol-slot.off { opacity: 0.6; }
+  .ol-lost { color: #ffb84a !important; }
+  .ol-kick { position: absolute; top: 2px; right: 4px; background: none; border: 0; color: #ff8a8a; font: 700 0.8rem system-ui; cursor: pointer; padding: 0.15rem 0.3rem; }
+  .ol-slot { position: relative; }
 </style>

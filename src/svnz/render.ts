@@ -4,6 +4,8 @@ import { CHARS, type Fighter } from './fight/fighter';
 import type { Fight } from './fight/fight';
 import type { Frame } from './fight/types';
 import { SLOT_COLORS } from './online/roster';
+import { itemInfo } from './online/items';
+import { portrait } from './online/portrait';
 
 export const W = 480;
 export const H = 272;
@@ -109,10 +111,12 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
     const k = p.char ? 0.5 + 0.5 * Math.min(1, p.t / 0.15) : 1;
     if (fr) items.push({ z: p.z + 0.5, draw: () => drawFrame(g, ch, 0, fr, sx, sy, p.vx >= 0 ? 1 : -1, 1, k) });
   }
-  // power-up on the map: gold star bobbing over a shadow; blinks when about to vanish
+  // power-ups on the map: the icon bobbing over a shadow with a glint sweeping over it; it blinks when about to vanish
   for (const it of fight.items) {
-    const an = CHARS.NinjaStar.anims['2'];
-    const fr = an.frames[Math.floor(fight.time * 12) % an.frames.length];
+    const info = itemInfo(it.type);
+    const an = CHARS.PowerUps.anims[String(info.id)];
+    if (!an) continue;
+    const fr = an.frames[Math.floor(fight.time * 10) % an.frames.length]!;
     const bob = Math.round(Math.sin(fight.time * 5) * 2);
     const [sx, sy] = screenOf(it.x, 12 + bob, it.z);
     const [shx, shy] = screenOf(it.x, 0, it.z);
@@ -120,7 +124,7 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
       items.push({ z: it.z, draw: () => {
         g.fillStyle = 'rgba(0,0,0,0.35)';
         g.fillRect(shx - 6, shy - 1, 12, 3);
-        drawFrame(g, 'NinjaStar', 0, fr, sx, sy, 1);
+        drawFrame(g, 'PowerUps', 0, fr, sx, sy, 1);
       } });
     }
   }
@@ -132,30 +136,91 @@ export function drawFight(g: CanvasRenderingContext2D, fight: Fight, debug = fal
 /** The sheets only have the printable ASCII range: anything else is dropped; long names are cut. */
 const plain = (s: string, max: number): string => s.replace(/[^\x21-\x7e ]/g, '').trim().slice(0, max);
 
-/** Name over a player's head (VS / co-op): nickname, and under it the character it picked; a colored bar tells the players apart. */
-function drawNameplate(g: CanvasRenderingContext2D, f: Fighter, fight: Fight, sx: number, sy: number): void {
-  const nick = plain(f.nick || f.name, 12) || `P${f.slot + 1}`;
-  const ch = plain(f.desc.alias, 12);
+/** Small power-up icon (12x12) at (x, y). */
+function drawIcon(g: CanvasRenderingContext2D, id: number, x: number, y: number, alpha = 1): void {
+  const an = CHARS.PowerUps.anims[String(id + 10)];
+  if (an) { g.globalAlpha = alpha; drawFrame(g, 'PowerUps', 0, an.frames[0]!, x + 6, y + 6, 1); g.globalAlpha = 1; }
+}
+
+/** The player's picture as an image (cached): the first standing frame of its character. */
+const faces = new Map<string, HTMLImageElement>();
+function face(char: string, sheet: number): HTMLImageElement | null {
+  const id = `${char}:${sheet}`;
+  let im = faces.get(id);
+  if (!im) {
+    const url = portrait(char, sheet);
+    if (!url) return null;
+    im = new Image();
+    im.src = url;
+    faces.set(id, im);
+  }
+  return im.complete && im.naturalWidth ? im : null;
+}
+
+/** Above a player's head, from the head up: [arrow] [power-up icons] name (and in co-op a life bar under it, like a nameplate).
+ *  The arrow is drawn only for the player whose screen this is, so everybody can find their own character. */
+function drawNameplate(g: CanvasRenderingContext2D, f: Fighter, fight: Fight, sx0: number, sy: number): void {
+  const sx = Math.max(Math.min(36, W / 2), Math.min(W - 36, sx0));   // keep the plate on the screen
+  const nick = plain(f.nick || f.name, 10) || `P${f.slot + 1}`;
   let top = sy - 52;
   const body = f.rects('body');
   if (body.length) top = Math.min(...body.map((r) => r[1] + CAM_Y)) - 2;
-  top = Math.max(2, top);
-  const w = Math.max(textWidth('small', nick), textWidth('small', ch));
-  const x = Math.round(sx - w / 2);
-  const y = top - 22;
   const col = SLOT_COLORS[f.slot % SLOT_COLORS.length]!;
+  const buffs: number[] = [];
+  if (f.stars > 0) buffs.push(1);
+  if (f.buff.speed > 0) buffs.push(3);
+  if (f.buff.shield > 0) buffs.push(4);
+  if (f.buff.power > 0) buffs.push(5);
+  if (f.buff.fang > 0) buffs.push(6);
+  const coop = fight.mode === 'coop';
+  const mine = f.slot === fight.local.slot;
+  const need = (coop ? 6 : 0) + 10 + (buffs.length ? 13 : 0) + (mine ? 9 : 0);
+  let y = Math.max(need + 1, top);          // keep it on the screen
+  if (coop) {
+    const w = 30, x = Math.round(sx - w / 2);
+    y -= 6;
+    g.fillStyle = '#000';
+    g.fillRect(x - 1, y - 1, w + 2, 5);
+    const k = Math.max(0, Math.min(1, f.life / Math.max(1, f.lifeMax)));
+    g.fillStyle = k > 0.5 ? '#58d858' : k > 0.25 ? '#f8c028' : '#e83838';
+    g.fillRect(x, y, Math.round(w * k), 3);
+  }
+  const w = textWidth('small', nick);
+  y -= 10;
   g.fillStyle = 'rgba(0,0,0,0.55)';
-  g.fillRect(x - 2, y - 1, w + 4, 20);
+  g.fillRect(Math.round(sx - w / 2) - 2, y - 1, w + 4, 10);
   g.fillStyle = col;
-  g.fillRect(x - 2, y + 19, w + 4, 2);
-  drawText(g, f.slot === fight.local.slot ? 'smallOn' : 'small', nick, sx, y, 'center');
-  drawText(g, 'smallOff', ch, sx, y + 9, 'center');
+  g.fillRect(Math.round(sx - w / 2) - 2, y + 9, w + 4, 1);
+  drawText(g, mine ? 'smallOn' : 'small', nick, sx, y, 'center');
+  if (buffs.length) {
+    y -= 13;
+    buffs.forEach((id, i) => drawIcon(g, id, Math.round(sx - (buffs.length * 13 - 1) / 2) + i * 13, y));
+  }
+  if (mine) {
+    y -= 8 - Math.round(Math.sin(fight.time * 6));
+    // a small arrow pointing down at the player: dark edge, color of the player
+    g.fillStyle = '#000';
+    for (let r = 0; r < 5; r++) g.fillRect(Math.round(sx) - 4 + r, y + r, 9 - 2 * r, 1);
+    g.fillStyle = col;
+    for (let r = 0; r < 4; r++) g.fillRect(Math.round(sx) - 3 + r, y + r, 7 - 2 * r, 1);
+  }
 }
 
 function drawFighter(g: CanvasRenderingContext2D, f: Fighter, debug: boolean, fight: Fight): void {
   if ((f.blink && !f.blinkOn) || f.hidden) return;
   let [sx, sy] = screenOf(f.pos.x, f.pos.y, f.pos.z);
   if (f.shake.on) sx += (Math.random() * 2 - 1) * f.shake.amp;
+  if (f.buff.shield > 0) {   // shield power-up: a translucent bubble around the body
+    g.save();
+    g.fillStyle = 'rgba(96,230,140,0.22)';
+    g.strokeStyle = 'rgba(210,255,225,0.85)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.ellipse(Math.round(sx), Math.round(sy - 22), 24, 31, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.restore();
+  }
   drawFrame(g, f.desc.dataKey, f.sheet, f.frame!, sx, sy, f.facing);
   if (f.slot >= 0 && fight.mode !== 'story') drawNameplate(g, f, fight, sx, sy);
   if (debug) {
@@ -223,13 +288,13 @@ export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
     drawText(g, 'smallOn', `Record: ${fight.record}`, 452, 11, 'right');
     drawText(g, 'smallOn', `Count: ${fight.count}`, 452, 24, 'right');
   }
-  if (fight.mode !== 'story') drawSquad(g, fight);
+  if (fight.mode === 'vs') drawVsBar(g, fight);
   if (fight.wave?.mode === 'TimeMode') {
     const t = Math.ceil(fight.timeLeft);
     drawText(g, 'smallOn', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, 240, 30, 'center');
   }
   // last enemy hit: bottom right, name above its frame
-  const e = fight.target;
+  const e = fight.mode === 'vs' ? null : fight.target;
   if (e && !e.dead) {
     lifeBar(g, 304, 258, e.life, e.lifeMax, true);
     drawText(g, 'small', plain(e.name, 20), 326, 250);
@@ -237,7 +302,7 @@ export function drawHud(g: CanvasRenderingContext2D, fight: Fight): void {
   // combo counter: bottom left
   const cb = img('assets/images/hud/comboBars.png');
   const c = fight.combo;
-  if (cb && c.hits > 0) {
+  if (cb && c.hits > 0 && fight.mode !== 'vs') {
     drawText(g, 'smallOn', `${c.hits} Hits`, 42, 244, 'center');
     g.drawImage(cb, 0, 8, 64, 8, 10, 254, 64, 8);
     const w = Math.max(0, Math.round(64 * c.left / c.window));
@@ -253,30 +318,45 @@ export function drawBanner(g: CanvasRenderingContext2D, text: string): void {
   drawText(g, 'small', text, W / 2, 132, 'center');
 }
 
-/** VS / co-op: life of everybody else in the match, so the team can see who is about to fall. Allies on the left under the
- *  player's own bars, rivals (VS) on the right. */
-function drawSquad(g: CanvasRenderingContext2D, fight: Fight): void {
-  const me = fight.local;
-  const row = (f: Fighter, x: number, y: number, right: boolean) => {
+/** VS, Smash style: along the bottom, one card per player (face, name up to 10 characters, life bar and the lives left as hearts).
+ *  Up to 4 players fit side by side. */
+function drawVsBar(g: CanvasRenderingContext2D, fight: Fight): void {
+  const ps = fight.players;
+  const cw = 118, h = 36, gap = 2;
+  const total = ps.length * cw + (ps.length - 1) * gap;
+  const x0 = Math.round((W - total) / 2);
+  const y0 = H - h - 2;
+  ps.forEach((f, i) => {
+    const x = x0 + i * (cw + gap);
     const col = SLOT_COLORS[f.slot % SLOT_COLORS.length]!;
-    const w = 64;
-    const nick = plain(f.nick || f.name, 8) || `P${f.slot + 1}`;
-    g.fillStyle = 'rgba(0,0,0,0.55)';
-    g.fillRect(x - 2, y - 1, w + 26, 15);
+    const mine = f === fight.local;
+    const out = f.out;
+    g.fillStyle = out ? 'rgba(20,20,24,0.8)' : 'rgba(10,6,24,0.72)';
+    g.fillRect(x, y0, cw, h);
     g.fillStyle = col;
-    g.fillRect(right ? x + w + 22 : x - 2, y - 1, 2, 15);
-    const tx = right ? x + w + 20 : x + 2;
-    drawText(g, f.dead || f.life <= 0 ? 'smallOff' : 'small', nick, tx, y, right ? 'right' : 'left');
-    const bx = right ? x : x + 2, by = y + 9;
-    g.fillStyle = '#140c20';
-    g.fillRect(bx, by, w, 4);
-    const k = Math.max(0, Math.min(1, f.life / Math.max(1, f.lifeMax)));
+    g.fillRect(x, y0, cw, 2);
+    if (mine) { g.strokeStyle = '#fff'; g.lineWidth = 1; g.strokeRect(x + 0.5, y0 + 0.5, cw - 1, h - 1); }
+    const im = face(f.desc.key, f.sheet);
+    g.globalAlpha = out ? 0.35 : 1;
+    if (im) { g.imageSmoothingEnabled = false; g.drawImage(im, 0, 12, 128, 104, x + 3, y0 + 5, 30, 26); }
+    g.globalAlpha = 1;
+    const nick = plain(f.nick || f.name, 10) || `P${f.slot + 1}`;
+    drawText(g, out ? 'smallOff' : mine ? 'smallOn' : 'small', nick, x + 37, y0 + 5);
+    // life bar
+    const bw = 76, by = y0 + 15;
+    g.fillStyle = '#000';
+    g.fillRect(x + 36, by - 1, bw + 2, 7);
+    g.fillStyle = '#2a2236';
+    g.fillRect(x + 37, by, bw, 5);
+    const k = out ? 0 : Math.max(0, Math.min(1, f.life / Math.max(1, f.lifeMax)));
     g.fillStyle = k > 0.5 ? '#58d858' : k > 0.25 ? '#f8c028' : '#e83838';
-    g.fillRect(bx, by, Math.round(w * k), 4);
-    if (f.dead || f.life <= 0) drawText(g, 'smallOn', 'KO', right ? x + w + 20 : bx + w + 4, y + 3, right ? 'right' : 'left');
-  };
-  const mates = fight.players.filter((f) => f !== me && f.team === me.team);
-  const rivals = fight.players.filter((f) => f.team !== me.team);
-  mates.forEach((f, i) => row(f, 10, 50 + i * 17, false));
-  rivals.forEach((f, i) => row(f, 480 - 10 - 90, 12 + i * 17, true));
+    g.fillRect(x + 37, by, Math.round(bw * k), 5);
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    g.fillRect(x + 37, by, Math.round(bw * k), 1);
+    // lives
+    const max = fight.maxStocks || 3;
+    for (let l = 0; l < max; l++) drawIcon(g, 2, x + 36 + l * 13, y0 + 22, l < f.stocks ? 1 : 0.22);
+    if (out) drawText(g, 'smallOn', 'OUT', x + cw - 4, y0 + 25, 'right');
+    else if (f.dead && f.respawn > 0) drawText(g, 'small', '...', x + cw - 4, y0 + 25, 'right');
+  });
 }

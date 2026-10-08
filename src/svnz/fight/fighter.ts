@@ -4,13 +4,14 @@ import fsmJson from '../data/fsm.json';
 import charsJson from '../data/chars.json';
 import xaJson from '../data/xa.json';
 import starJson from '../data/star.json';
+import powerupsJson from '../data/powerups.json';
 import type { Act, Anim, CharDesc, CharSprites, Cond, ControlTrig, FState, FsmData, HitDef, Params, Rect, Trig } from './types';
 import type { Fight } from './fight';
 import type { Pad, RemoteSource } from './pad';
 import { playSound } from '../core/audio';
 
 export const FSM = fsmJson as unknown as FsmData;
-export const CHARS = { ...(charsJson as unknown as Record<string, CharSprites>), ...(xaJson as unknown as Record<string, CharSprites>), ...(starJson as unknown as Record<string, CharSprites>) };
+export const CHARS = { ...(charsJson as unknown as Record<string, CharSprites>), ...(xaJson as unknown as Record<string, CharSprites>), ...(starJson as unknown as Record<string, CharSprites>), ...(powerupsJson as unknown as Record<string, CharSprites>) };
 
 const TICK = 1 / 60; // DAT_004f6b40: ticks -> seconds
 const ANIM_FPS = 60;
@@ -173,6 +174,15 @@ export class Fighter {
   combo = { hits: 0, window: 0, left: 0 };
   comboTarget: Fighter | null = null;
   remote: RemoteSource | null = null;
+  /** Power-ups of the online modes (seconds left): speed (bolt), shield, damage up (fist), life steal (fang). `stars` is the ninja-star one. */
+  buff = { speed: 0, shield: 0, power: 0, fang: 0 };
+  /** damage dealt multiplier (balance of the XA characters in VS) */
+  dmgMul = 1;
+  /** VS lives: stocks left, eliminated, seconds until the next one comes back, cool-down of the thrown stars */
+  stocks = 0;
+  out = false;
+  respawn = 0;
+  starCd = 0;
   sheet = 0;
   ai: { update(dt: number): void } | null = null;
   /** IAIFighter target (Fighter +0x31c): who the AI is aiming at; null = none (-1). */
@@ -193,6 +203,16 @@ export class Fighter {
   }
 
   // ---------------------------------------------------------------- queries
+  /** damage dealt multiplier: the character's balance times the damage power-up */
+  get damageMul(): number { return this.dmgMul * (this.buff.power > 0 ? 1.4 : 1); }
+  get speedMul(): number { return this.buff.speed > 0 ? 1.4 : 1; }
+  /** still in the fight: not eliminated, and either alive or with a stock left to come back with (VS) */
+  get alive(): boolean { return !this.out && (this.life > 0 || this.stocks > 1); }
+  /** life steal: a share of the damage dealt comes back as life */
+  onDealt(dmg: number): void {
+    if (this.buff.fang > 0 && this.life > 0) this.life = Math.min(this.lifeMax, this.life + Math.max(1, Math.round(dmg * 0.35)));
+  }
+
   stateOf(generic: string): FState | null {
     const spec = this.dict[generic];
     return spec ? FSM.states[spec] ?? null : null;
@@ -285,6 +305,11 @@ export class Fighter {
   update(dt: number): void {
     if (this.guardHits > 0) this.guardHits = Math.max(0, this.guardHits - dt * 0.4);
     if (this.stars > 0) this.stars = Math.max(0, this.stars - dt);
+    if (this.buff.speed > 0) this.buff.speed = Math.max(0, this.buff.speed - dt);
+    if (this.buff.shield > 0) this.buff.shield = Math.max(0, this.buff.shield - dt);
+    if (this.buff.power > 0) this.buff.power = Math.max(0, this.buff.power - dt);
+    if (this.buff.fang > 0) this.buff.fang = Math.max(0, this.buff.fang - dt);
+    if (this.starCd > 0) this.starCd = Math.max(0, this.starCd - dt);
     // FUN_0040b230: pause -> affect -> displacement timers
     let d = dt;
     if (this.pause > 0) {
@@ -302,6 +327,12 @@ export class Fighter {
     const paused = this.pause > 0;
     if (!paused) this.anim.update(dt);
     if (this.pad) this.pad.update(dt);
+    // the ninja-star power-up for everybody but Mina (hers works with W / Q): special button throws a star
+    if (!paused && this.stars > 0 && this.starCd <= 0 && this.pad && this.desc.key !== 'Mina' && this.ctrl[1] && this.pad.pressed(4)) {
+      this.fight.throwStar(this, 'NinjaStar');
+      this.starCd = 0.45;
+      playSound('weakSlash');
+    }
     if (!paused && this.pad) this.controlTriggers();
     if (!paused) this.walk();
     if (!paused) this.physics(dt);
@@ -341,7 +372,7 @@ export class Fighter {
     if (t && t.pos.x !== this.pos.x) this.facing = t.pos.x > this.pos.x ? 1 : -1;
     else this.facing = sx > 0 ? 1 : -1;
     // Fighter::v36 (004099e0): the state's own speed (+0x48) unless its +0x4c flag says to use the character's walkSpeed
-    const sp = st.f4c !== 0 ? this.desc.walkSpeed : st.f48;
+    const sp = (st.f4c !== 0 ? this.desc.walkSpeed : st.f48) * this.speedMul;
     this.vel.x = sp * sx;          // FUN_00410190: facing * (walkSpeed * stickX * facing)
     this.vel.z = sp * sy;
     if (!this.walking) {
@@ -567,8 +598,8 @@ export class Fighter {
       case 'ForceGravity': this.gForce = f[0]; break;
       case 'TurnFacing': this.facing = -this.facing; break;
       case 'VelAdd': this.vel.x += f[0]; this.vel.y += f[1]; this.vel.z += f[2]; break;
-      case 'VelSet': this.setVel(f[0], f[1], f[2]); break;
-      case 'VelSetX': this.vel.x = this.facing * f[0]; break;
+      case 'VelSet': this.setVel(f[0] * this.speedMul, f[1], f[2] * this.speedMul); break;
+      case 'VelSetX': this.vel.x = this.facing * f[0] * this.speedMul; break;
       case 'VelSetY': this.vel.y = f[0]; break;
       case 'VelSetZ': this.vel.z = f[0]; break;
       case 'VelScale': this.vel.x *= f[0]; this.vel.y *= f[1]; this.vel.z *= f[2]; break;
@@ -687,8 +718,9 @@ export class Fighter {
     if (this.special.on) {
       goTo = this.special.state;
     } else {
-      let dmg = h.damage;
-      if (this.armor || this.armorMode) {
+      const mul = (att as Partial<Fighter>).damageMul ?? 1;
+      let dmg = mul === 1 ? h.damage : Math.max(1, Math.round(h.damage * mul));
+      if (this.armor || this.armorMode || this.buff.shield > 0) {
         // armored (0x2f5 state armor / 0x2f6 armorMode): half damage, pushed back, shaken, no state change
         dmg = Math.max(1, Math.trunc(dmg / 2));
         goTo = '';
@@ -700,6 +732,7 @@ export class Fighter {
       }
       this.recvDamage = dmg;
       this.damage(dmg, false);
+      (att as Partial<Fighter>).onDealt?.(dmg);
       if (this.life === 0) { goTo = 'Dead'; }
       this.addPower(h.powerV);
     }

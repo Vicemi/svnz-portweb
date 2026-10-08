@@ -4,6 +4,7 @@ import { CHARS, Fighter, type Spark } from '../fight/fighter';
 import { Fight, type Phase } from '../fight/fight';
 import { makeDesc } from '../fight/data';
 import { playMusic, playSound } from '../core/audio';
+import type { ItemKey } from './items';
 
 export interface FSnap {
   u: number;        // uid
@@ -18,7 +19,9 @@ export interface FSnap {
   r: number;        // frame
   l: number; m: number;   // life, max life
   p: number;        // power
-  b: number;        // flags: 1 blink, 2 blinkOn, 4 hidden, 8 dead, 16 shake, 32 stars, 64 guard
+  b: number;        // flags: 1 blink, 2 blinkOn, 4 hidden, 8 dead, 16 shake, 32 stars, 64 guard, 128 eliminated (VS)
+  sk: number;       // VS lives left
+  bf: number;       // power-ups: 1 speed, 2 shield, 4 damage, 8 life steal
 }
 export interface PSnap { u: number; h: number; w: number; e: number; tg: number }
 export interface Snap {
@@ -28,6 +31,10 @@ export interface Snap {
   sh: number;
   fs: FSnap[];
   pl: PSnap[];
+  /** power-ups on the map: type, x, z, seconds left */
+  it: [string, number, number, number][];
+  /** VS lives each player started with */
+  lv: number;
   sp: [string, number, number, number, number, number][];
   snd: [string, number][];
   fin: number; res: number; won: number;
@@ -41,13 +48,14 @@ export function makeSnap(fight: Fight, seq: number, sounds: [string, number][]):
     x: r1(f.pos.x), y: r1(f.pos.y), z: r1(f.pos.z), f: f.facing,
     a: f.anim.id, r: f.anim.frame,
     l: Math.round(f.life), m: f.lifeMax, p: Math.round(f.power),
-    b: (f.blink ? 1 : 0) | (f.blinkOn ? 2 : 0) | (f.hidden ? 4 : 0) | (f.dead ? 8 : 0) | (f.shake.on ? 16 : 0) | (f.stars > 0 ? 32 : 0) | (f.guard ? 64 : 0),
+    b: (f.blink ? 1 : 0) | (f.blinkOn ? 2 : 0) | (f.hidden ? 4 : 0) | (f.dead ? 8 : 0) | (f.shake.on ? 16 : 0) | (f.stars > 0 ? 32 : 0) | (f.guard ? 64 : 0) | (f.out ? 128 : 0),
+    sk: f.stocks, bf: (f.buff.speed > 0 ? 1 : 0) | (f.buff.shield > 0 ? 2 : 0) | (f.buff.power > 0 ? 4 : 0) | (f.buff.fang > 0 ? 8 : 0),
   }));
   const pl: PSnap[] = fight.players.map((p) => ({ u: p.uid, h: p.combo.hits, w: r1(p.combo.window), e: r1(p.combo.left), tg: p.comboTarget ? p.comboTarget.uid : 0 }));
   const sp = fight.sparkLog.splice(0).map((s) => [s.char, s.id, r1(s.x), r1(s.y), r1(s.z), s.facing] as [string, number, number, number, number, number]);
   return {
     q: seq, tm: r1(fight.time), ph: fight.phase, wi: fight.waveIdx, bn: fight.banner, bt: r1(fight.bannerT), cnt: fight.count, tl: r1(fight.timeLeft),
-    mu: fight.musicKey, sh: fight.shake.t > 0 ? fight.shake.amp : 0, fs, pl, sp, snd: sounds.splice(0),
+    mu: fight.musicKey, sh: fight.shake.t > 0 ? fight.shake.amp : 0, fs, pl, it: fight.items.map((i) => [i.type, r1(i.x), r1(i.z), r1(i.t)] as [string, number, number, number]), lv: fight.maxStocks, sp, snd: sounds.splice(0),
     fin: fight.finished ? 1 : 0, res: fight.result ? fight.result.winner : -1, won: fight.won ? 1 : 0,
   };
 }
@@ -109,6 +117,9 @@ export class Mirror {
       f.shake.amp = 1;
       f.stars = e.b & 32 ? 5 : 0;
       f.guard = !!(e.b & 64);
+      f.out = !!(e.b & 128);
+      f.stocks = e.sk;
+      f.buff = { speed: e.bf & 1 ? 1 : 0, shield: e.bf & 2 ? 1 : 0, power: e.bf & 4 ? 1 : 0, fang: e.bf & 8 ? 1 : 0 };
       if (f.anim.id !== e.a) {
         const an = f.sprites.anims[String(e.a)];
         if (an) { f.anim.anim = an; f.anim.id = e.a; }
@@ -141,6 +152,8 @@ export class Mirror {
     F.count = s.cnt;
     F.timeLeft = s.tl;
     F.shake = { amp: s.sh, t: s.sh > 0 ? 0.1 : 0 };
+    F.items = s.it.map(([type, x, z, t]) => ({ type: type as ItemKey, x, z, t }));
+    F.maxStocks = s.lv;
     F.finished = !!s.fin;
     F.result = s.res >= 0 ? { winner: s.res } : null;
     F.won = !!s.won;

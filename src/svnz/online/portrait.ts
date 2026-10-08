@@ -27,7 +27,10 @@ export function portrait(charKey: string, palette = -1): string {
   const g = c.getContext('2d')!;
   g.imageSmoothingEnabled = false;
   g.scale(2, 2);
-  drawFrame(g, desc.dataKey, sheetIdx, frame, 32, 58, 1);
+  // big sprites (the XA boss) are scaled down to fit the picture
+  const ir = cs.images[frame.img];
+  const hh = ir ? ir[3] * (cs.scale ?? 1) : 40;
+  drawFrame(g, desc.dataKey, sheetIdx, frame, 32, 60, 1, 1, Math.min(1, 52 / Math.max(1, hh)));
   const url = c.toDataURL('image/png');
   cache.set(id, url);
   return url;
